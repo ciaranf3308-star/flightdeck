@@ -27,17 +27,28 @@ ground truth, not the doc.** Any discrepancy goes into research/api-research.md.
 
 Goal: get the plan into the aircraft's FMGC/MCDU with minimum manual entry.
 
-Studied 2026-10-14 — verdict: **the exported PLN does NOT auto-load into the
-iniBuilds A330-300's MCDU.** iniBuilds staff confirm on their forum (Dec 2024,
-"Can't load plan from msfs EFB to all iniBuilds Airbus aircraft") that the MSFS
-2024 universal EFB cannot feed their Airbus fleet — "Send route to avionics" does
-nothing on iniBuilds Airbuses, and integration needs a Microsoft/SDK decision.
-A Sep 2025 user still lists working "send to avionics" as a missing must-have.
-SimConnect can't inject either (it updates the legacy ATC plan, not the FMGC).
-The flight director itself is FMGC-driven: once the route is in the MCDU by ANY
-means, the ND shows it, FD bars guide, and NAV (push HDG knob) flies it laterally.
+Studied 2026-10-14, CORRECTED after user challenge — the Dec-2024 iniBuilds
+forum position ("EFB can't feed our Airbuses") is STALE. Verified from official
+release notes:
+- SU3 (mid-2025): iniBuilds fixed "MCDU and EFB not communicating – unable to
+  cross-load flight plan" on their Airbus line.
+- FlyByWire A32NX v2024010: "MSFS EFB Flight Plan Sync — flight plans can be
+  sent to or requested from the FMS in the MSFS EFB." The platform API exists.
+- SU7 (2026-10-13, 1.9.18.0): "Fixed - EFB fails to send flight plan to MCDU"
+  for the Airbus H225 — Asobo is fixing this per-aircraft.
+- BUT the A330-300's SU7 entry lists only a Lufthansa livery — no EFB→MCDU fix
+  is documented for the A330 specifically.
+So: EFB→avionics sync is real and rolling out per-aircraft, and plausibly works
+on the A330 (shared iniBuilds codebase), but it is UNCONFIRMED for the A330-300
+until tested in-sim. SimConnect still can't inject (legacy ATC plan only).
+The flight director is FMGC-driven: once the route is in the MCDU by ANY means,
+the ND shows it, FD bars guide, and NAV (push HDG knob) flies it laterally.
 
-Realistic sync stories, in order:
+Fastest in-sim test (2 min, decides it): load the FlightDeck PLN in the EFB →
+"Send to Avionics" → open the MCDU F-PLN page. If the waypoints appear, the
+direct path works and SimBrief/manual entry become unnecessary.
+
+Sync stories, in order:
 
 1. **SimBrief OFP → MCDU INIT REQUEST (recommended):** the default MSFS 2024
    Airbuses (incl. iniBuilds A330-300) support SimBrief import — MCDU INIT page →
