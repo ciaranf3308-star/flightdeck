@@ -20,11 +20,14 @@ export default function MapView({ fixes, track, showTrack, originName, destName 
   useEffect(() => {
     if (!divRef.current || mapRef.current) return;
     const map = L.map(divRef.current, { worldCopyJump: true, zoomControl: true }).setView([50, -30], 4);
-    // CARTO dark basemap — designed for dark UIs, no key needed.
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: "abcd",
-      maxZoom: 20,
+    // Esri World Dark Gray — free, no API key (CARTO now requires one).
+    // Note the {z}/{y}/{x} order Esri uses.
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+      attribution: "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ",
+      maxZoom: 16,
+    }).addTo(map);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 16,
     }).addTo(map);
     mapRef.current = map;
     layerRef.current = L.layerGroup().addTo(map);
