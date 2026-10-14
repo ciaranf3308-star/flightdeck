@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { api, download, type PlanResponse, type ParsedPlnLike } from "../api";
 import { FieldValue, ProvBadge, fmtUtc } from "./Provenance";
 import MapView from "./MapView";
+import SimBriefPanel from "./SimBriefPanel";
 import type {
   AirportNavData,
   FlightLookupResult,
@@ -93,6 +94,7 @@ export function PlanResults({ initial, header }: { initial: PlanResponse; header
         </div>
       </div>
       <ExportPanel plan={resp.plan} />
+      <SimBriefPanel plan={resp.plan} lookup={resp.lookup} />
     </>
   );
 }
