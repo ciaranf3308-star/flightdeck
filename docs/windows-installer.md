@@ -1,6 +1,6 @@
 # FlightDeck Windows installer
 
-Current: `FlightDeck-Setup-0.2.1.exe` — a per-user NSIS installer (no admin rights, no UAC prompt).
+Current: `FlightDeck-Setup-0.3.0.exe` — a per-user NSIS installer (no admin rights, no UAC prompt).
 
 > 0.2.1 fixes the "application window shows `{"error":"Not found."}`" bug from
 > 0.2.0: the static-file containment check used `file.startsWith(dir + "/")`,

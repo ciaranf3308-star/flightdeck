@@ -107,7 +107,7 @@ export default function HomeView({ onSearch, onOpenSaved, refreshToken }: Props)
       <section className="hero">
         <div className="hero-inner">
           <div className="hero-kicker">MSFS 2024 · commercial IFR planning</div>
-          <h1>FlightDeck</h1>
+          <h1>Flight<em>Deck</em></h1>
           <p className="hero-sub">
             Look up a real flight, replay its filed route, plan deterministic procedures, and export
             a 2024 EFB flight plan. Save the ones you love and organize them your way.

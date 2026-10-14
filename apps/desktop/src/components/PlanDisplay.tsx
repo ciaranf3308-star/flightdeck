@@ -100,10 +100,14 @@ export function PlanResults({ initial, header }: { initial: PlanResponse; header
 export function LookupCard({ lookup }: { lookup: FlightLookupResult }) {
   const badge = providerBadge(lookup.provider);
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-        <h2>{lookup.flightNumber} <span className="faint">· {lookup.date}</span></h2>
-        <ProvBadge provenance={badge.provenance} title={badge.title} />
+    <div className="card" style={{ marginBottom: 18 }}>
+      <div className="plan-head">
+        <div className="plan-ident">{lookup.flightNumber}</div>
+        <div className="plan-route">
+          {lookup.origin.value?.icao ?? "···"}<span className="arrow">→</span>{lookup.destination.value?.icao ?? "···"}
+        </div>
+        <span className="faint mono" style={{ fontSize: 13 }}>{lookup.date}</span>
+        <span style={{ marginLeft: "auto" }}><ProvBadge provenance={badge.provenance} title={badge.title} /></span>
       </div>
       <dl className="kv">
         <dt>Route</dt>

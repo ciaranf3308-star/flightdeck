@@ -74,7 +74,7 @@ export default function App() {
         </nav>
       </header>
       {updateInfo && (
-        <div style={{ background: "var(--amber-bg, #3a2c10)", borderBottom: "1px solid var(--amber, #f5a524)", padding: "8px 16px", display: "flex", gap: 12, alignItems: "center", justifyContent: "center" }}>
+        <div className="update-banner">
           <span>FlightDeck <b>{updateInfo.latestVersion}</b> is available.</span>
           <button className="btn ghost small" onClick={() => setView("settings")}>Update in Settings</button>
           <button className="btn ghost small" onClick={() => setUpdateInfo(null)}>Dismiss</button>
@@ -172,43 +172,41 @@ function PlanView({ seed, onBack, onSaved }: { seed: PlanSeed | null; onBack: ()
       <div className="row" style={{ marginBottom: 12 }}>
         <button className="btn ghost small" onClick={onBack}>← Library</button>
       </div>
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card lookup-card" style={{ marginBottom: 18 }}>
         <h2>Flight lookup</h2>
         <div className="sub">Enter a commercial flight number and date. Partial data is shown as-is — unavailable fields are labelled, never filled in.</div>
-        <div className="row">
-          <div className="field" style={{ marginBottom: 0, minWidth: 150 }}>
+        <div className="lookup-grid">
+          <div className="field" style={{ marginBottom: 0 }}>
             <label>Flight number</label>
             <input value={flightNumber} onChange={(e) => setFlightNumber(e.target.value)} placeholder="EI106" />
           </div>
-          <div className="field" style={{ marginBottom: 0, minWidth: 170 }}>
+          <div className="field" style={{ marginBottom: 0 }}>
             <label>Date (departure)</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
-          <div className="field" style={{ marginBottom: 0, minWidth: 220 }}>
+          <div className="field" style={{ marginBottom: 0 }}>
             <label>Aircraft profile</label>
             <select value={aircraftId} onChange={(e) => setAircraftId(e.target.value)}>
               <option value="">Auto (from lookup)</option>
               {profiles.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
             </select>
           </div>
-          <div style={{ minWidth: 300 }}>
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>Planning mode</label>
-              <div className="mode-toggle">
-                <button className={mode === "historical" ? "active" : ""} onClick={() => setMode("historical")}>
-                  Historical Replay<small>Prefer the recorded route &amp; runways</small>
-                </button>
-                <button className={mode === "current" ? "active" : ""} onClick={() => setMode("current")}>
-                  Current Conditions<small>Best route for today's wind &amp; aircraft</small>
-                </button>
-              </div>
+        </div>
+        <div className="lookup-actions">
+          <div className="field" style={{ marginBottom: 0, flex: "1 1 320px", maxWidth: 460 }}>
+            <label>Planning mode</label>
+            <div className="mode-toggle">
+              <button className={mode === "historical" ? "active" : ""} onClick={() => setMode("historical")}>
+                Historical Replay<small>Prefer the recorded route &amp; runways</small>
+              </button>
+              <button className={mode === "current" ? "active" : ""} onClick={() => setMode("current")}>
+                Current Conditions<small>Best route for today's wind &amp; aircraft</small>
+              </button>
             </div>
           </div>
-          <div style={{ alignSelf: "flex-end" }}>
-            <button className="btn" onClick={() => void search()} disabled={loading || !flightNumber || !date}>
-              {loading ? <><span className="spin" />Planning…</> : "Look up & plan"}
-            </button>
-          </div>
+          <button className="btn" onClick={() => void search()} disabled={loading || !flightNumber || !date}>
+            {loading ? <><span className="spin" />Planning…</> : "Look up & plan"}
+          </button>
         </div>
         {mode === "current" && (
           <div className="row mt">
