@@ -45,8 +45,11 @@ The flight director is FMGC-driven: once the route is in the MCDU by ANY means,
 the ND shows it, FD bars guide, and NAV (push HDG knob) flies it laterally.
 
 Fastest in-sim test (2 min, decides it): load the FlightDeck PLN in the EFB →
-"Send to Avionics" → open the MCDU F-PLN page. If the waypoints appear, the
-direct path works and SimBrief/manual entry become unnecessary.
+"SEND TO ATC AND AVIONICS" → spawn in the A330 → open the MCDU F-PLN page.
+If the waypoints appear, the direct path works and SimBrief/manual entry
+become unnecessary. Full investigation, both paths, and PoC status:
+docs/a330-route-loading-investigation.md. PoC files: KJFKEIDW01.fpl
+(company-route .fpl — MCDU CO ROUTE field) and EI106-KJFK-EIDW.pln.
 
 Sync stories, in order:
 

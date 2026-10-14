@@ -324,3 +324,8 @@ export function parseMsfs2024Pln(xml: string): ParsedPln {
     warnings,
   };
 }
+
+// ---------------------------------------------------------------------------
+// iniBuilds company-route (.fpl) exporter — PROOF OF CONCEPT (unverified)
+// ---------------------------------------------------------------------------
+export * from "./company-route.js";
