@@ -52,6 +52,10 @@ cp "$ROOT/installer/launch.vbs" "$STAGE/launch.vbs"
 cp "$ROOT/installer/stop.vbs" "$STAGE/stop.vbs"
 cp "$ROOT/installer/flightdeck.ico" "$STAGE/flightdeck.ico"
 cp "$ROOT/installer/update-feed.json" "$STAGE/resources/api/update-feed.json"
+# Fixture snapshots back the offline "fixtures" provider (used when no
+# FlightAware key is set). Without these, every Flight Plan lookup in the
+# packaged app returns state "empty".
+cp -r "$ROOT/tests/fixtures" "$STAGE/resources/api/fixtures"
 cat > "$STAGE/resources/bridge/README.txt" <<'EOF'
 Optional: SimConnect bridge (built on Windows)
 =============================================

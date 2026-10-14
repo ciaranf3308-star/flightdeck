@@ -26,6 +26,7 @@ const ROOT = new URL("../../", import.meta.url).pathname.replace(/\/$/, "");
 const API_DIST = join(ROOT, "services/planning-api/dist");
 const SPA_DIST = join(ROOT, "apps/desktop/dist");
 const PKG = join(ROOT, "services/planning-api/package.json");
+const FIXTURES = join(ROOT, "tests/fixtures");
 
 let port = 0;
 let proc: ChildProcess | null = null;
@@ -61,12 +62,13 @@ beforeAll(async () => {
   ] as const) {
     if (!existsSync(p)) throw new Error(`Missing ${what}`);
   }
-  // Assemble a packaged layout: <stage>/api/{dist,public,package.json,node_modules}
+  // Assemble a packaged layout: <stage>/api/{dist,public,package.json,node_modules,fixtures}
   rmSync(stage, { recursive: true, force: true });
   mkdirSync(join(stage, "api"), { recursive: true });
   cpSync(API_DIST, join(stage, "api", "dist"), { recursive: true });
   cpSync(SPA_DIST, join(stage, "api", "public"), { recursive: true });
   cpSync(PKG, join(stage, "api", "package.json"));
+  cpSync(FIXTURES, join(stage, "api", "fixtures"), { recursive: true });
   symlinkSync(join(ROOT, "node_modules"), join(stage, "api", "node_modules"));
 
   port = await freePort();
@@ -137,5 +139,25 @@ describe("packaged runtime", () => {
     const body = await r.text();
     // Either 404 or the SPA fallback — never the raw package.json.
     expect(body).not.toContain('"@flightdeck');
+  });
+
+  it("plans the reference flight from bundled fixtures (no dev tests/ dir)", async () => {
+    // Regression: the 0.2.2 installer shipped no fixtures, so the offline
+    // provider returned state "empty" and every Flight Plan lookup failed
+    // with `Cannot plan: flight lookup state is "empty".`
+    const r = await fetch(`http://127.0.0.1:${port}/api/plan`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        flightNumber: "EI106",
+        date: "2026-10-09",
+        mode: "historical",
+        aircraftProfileId: "inibuilds-a333",
+      }),
+    });
+    expect(r.status).toBe(200);
+    const j = (await r.json()) as { lookup: { state: string }; plan: { fixes: unknown[] } };
+    expect(j.lookup.state).toBe("ok");
+    expect(j.plan.fixes.length).toBeGreaterThan(0);
   });
 });

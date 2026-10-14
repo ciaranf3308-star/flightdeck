@@ -60,8 +60,13 @@ import {
 } from "./library.js";
 
 const PORT = Number(process.env.FLIGHTDECK_PORT ?? 8124);
+// Fixture snapshots: dev layout keeps them at tests/fixtures; the packaged
+// installer bundles them at resources/api/fixtures. Resolved from the module
+// location, never the working directory.
+const DEV_FIXTURES = new URL("../../../tests/fixtures", import.meta.url).pathname;
+const PKG_FIXTURES = resolve(dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
 const FIXTURES_ROOT =
-  process.env.FLIGHTDECK_FIXTURES ?? new URL("../../../tests/fixtures", import.meta.url).pathname;
+  process.env.FLIGHTDECK_FIXTURES ?? (existsSync(DEV_FIXTURES) ? DEV_FIXTURES : PKG_FIXTURES);
 
 const navdb = new FixtureNavDatabase();
 
@@ -158,7 +163,8 @@ async function handlePlan(body: Record<string, unknown>): Promise<{ lookup: Flig
     lookup = await handleLookup(body);
   }
   if (lookup.state !== "ok" || !lookup.origin.value || !lookup.destination.value) {
-    throw httpError(422, `Cannot plan: flight lookup state is "${lookup.state}".`);
+    const detail = lookup.warnings?.[0] ? ` ${lookup.warnings[0]}` : "";
+    throw httpError(422, `Cannot plan: flight lookup state is "${lookup.state}".${detail}`);
   }
   const origin = await navdb.getAirport(lookup.origin.value.icao);
   const destination = await navdb.getAirport(lookup.destination.value.icao);
