@@ -20,11 +20,12 @@ export default function MapView({ fixes, track, showTrack, originName, destName 
   useEffect(() => {
     if (!divRef.current || mapRef.current) return;
     const map = L.map(divRef.current, { worldCopyJump: true, zoomControl: true }).setView([50, -30], 4);
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 18,
+    // CARTO dark basemap — designed for dark UIs, no key needed.
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: "abcd",
+      maxZoom: 20,
     }).addTo(map);
-    // darken tiles slightly for the flight-deck theme
     mapRef.current = map;
     layerRef.current = L.layerGroup().addTo(map);
     return () => {
@@ -44,19 +45,40 @@ export default function MapView({ fixes, track, showTrack, originName, destName 
     const withCoords = fixes.filter((f) => f.lat != null && f.lon != null);
     const routeLatLngs = withCoords.map((f) => [f.lat as number, f.lon as number] as L.LatLngExpression);
     if (routeLatLngs.length > 1) {
-      L.polyline(routeLatLngs, { color: "#38bdf8", weight: 2.5, opacity: 0.9 }).addTo(layer);
+      // Halo under the core line for a soft glow.
+      L.polyline(routeLatLngs, { color: "#7dd3fc", weight: 9, opacity: 0.16 }).addTo(layer);
+      L.polyline(routeLatLngs, { color: "#7dd3fc", weight: 3, opacity: 0.95 }).addTo(layer);
     }
+    const aptIcon = (icao: string) =>
+      L.divIcon({
+        className: "fd-apt-marker",
+        html: `<span class="fd-apt-dot"></span><span class="fd-apt-label">${icao}</span>`,
+        iconSize: [0, 0],
+      });
     withCoords.forEach((f) => {
       const isApt = f.type === "origin" || f.type === "destination";
-      L.circleMarker([f.lat as number, f.lon as number], {
-        radius: isApt ? 7 : 4,
-        color: isApt ? "#f5a524" : "#38bdf8",
-        fillColor: isApt ? "#f5a524" : "#0b0f14",
-        fillOpacity: 1,
-        weight: 2,
-      })
-        .bindTooltip(`<b>${f.name}</b>${f.note ? `<br/>${f.note}` : ""}`, { direction: "top" })
-        .addTo(layer);
+      if (isApt) {
+        L.marker([f.lat as number, f.lon as number], { icon: aptIcon(f.name), interactive: true })
+          .bindTooltip(`<b>${f.name}</b>${f.note ? `<br/>${f.note}` : ""}`, {
+            direction: "top",
+            className: "fd-tip",
+            offset: [0, -14],
+          })
+          .addTo(layer);
+      } else {
+        L.circleMarker([f.lat as number, f.lon as number], {
+          radius: 4,
+          color: "#7dd3fc",
+          fillColor: "#0c0a07",
+          fillOpacity: 1,
+          weight: 2,
+        })
+          .bindTooltip(`<b>${f.name}</b>${f.note ? `<br/>${f.note}` : ""}`, {
+            direction: "top",
+            className: "fd-tip",
+          })
+          .addTo(layer);
+      }
       bounds.push([f.lat as number, f.lon as number]);
     });
     // Named fixes without coordinates: listed, not plotted.
@@ -80,7 +102,8 @@ export default function MapView({ fixes, track, showTrack, originName, destName 
       }
       if (current.length > 1) segments.push(current);
       for (const seg of segments) {
-        L.polyline(seg, { color: "#f5a524", weight: 2, opacity: 0.75, dashArray: "7 5" }).addTo(layer);
+        L.polyline(seg, { color: "#f5a524", weight: 7, opacity: 0.14 }).addTo(layer);
+        L.polyline(seg, { color: "#f5a524", weight: 2, opacity: 0.8, dashArray: "7 5" }).addTo(layer);
         seg.forEach(([la, lo]) => bounds.push([la, lo]));
       }
     }
@@ -96,14 +119,19 @@ export default function MapView({ fixes, track, showTrack, originName, destName 
 
   return (
     <div className="map-wrap">
-      <div ref={divRef} style={{ height: 460 }} />
+      <div ref={divRef} style={{ height: 520 }} />
+      <div className="map-title">
+        <span className="map-title-route">{originName}<span className="arrow">→</span>{destName}</span>
+        <span className="map-title-sub">filed route · recorded track overlay</span>
+      </div>
       <div className="map-legend">
-        <div><span className="sw" style={{ background: "#38bdf8" }} />Filed route ({originName}–{destName})</div>
+        <div className="map-legend-title">Legend</div>
+        <div><span className="sw" style={{ background: "#7dd3fc" }} />Filed route</div>
         {showTrack && track.length > 0 && (
-          <div style={{ marginTop: 4 }}><span className="sw" style={{ background: "#f5a524" }} />Recorded track ({track.length} pts)</div>
+          <div style={{ marginTop: 5 }}><span className="sw" style={{ background: "#f5a524" }} />Recorded track · {track.length} pts</div>
         )}
         {noCoords.length > 0 && (
-          <div style={{ marginTop: 4 }} className="faint" title="Provider supplied no coordinates for these fixes">
+          <div style={{ marginTop: 5 }} className="faint" title="Provider supplied no coordinates for these fixes">
             Not plotted: {noCoords.join(", ")}
           </div>
         )}

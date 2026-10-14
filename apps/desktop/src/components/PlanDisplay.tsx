@@ -174,19 +174,23 @@ export function RouteString({ fixes }: { fixes: FlightLookupResult["filedRoute"]
   if (!fixes || fixes.length === 0) return null;
   return (
     <div className="mt">
-      <div className="sub" style={{ marginBottom: 6 }}>Filed route — fixes without provider coordinates are underlined, not plotted</div>
-      <div className="route-string">
-        {fixes.map((f, i) => (
-          <span key={i}>
-            {i > 0 && <span className="faint"> · </span>}
-            <span
-              className={f.type === "origin" || f.type === "destination" ? "apt" : f.lat == null ? "fix-nocoords" : "fix-ok"}
-              title={f.lat == null ? "No coordinates from provider" : `${f.lat.toFixed(4)}, ${f.lon?.toFixed(4)}`}
-            >
-              {f.name}
+      <div className="sub" style={{ marginBottom: 8 }}>Filed route — fixes without provider coordinates are hatched, not plotted</div>
+      <div className="route-strip">
+        {fixes.map((f, i) => {
+          const isApt = f.type === "origin" || f.type === "destination";
+          const noCoords = f.lat == null;
+          return (
+            <span key={i} className="rs-item">
+              {i > 0 && <span className="rs-sep" aria-hidden="true" />}
+              <span
+                className={`rs-fix${isApt ? " apt" : ""}${noCoords ? " nocoords" : ""}`}
+                title={noCoords ? "No coordinates from provider — not plotted" : `${f.lat!.toFixed(4)}, ${f.lon!.toFixed(4)}${f.note ? ` — ${f.note}` : ""}`}
+              >
+                {f.name}
+              </span>
             </span>
-          </span>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -210,10 +214,11 @@ export function ProcedurePanel({
     <div className="card">
       <h2>Procedures</h2>
       <div className="sub">Deterministic selection — hard constraints first, then ranking. Confidence comes from listed evidence only.</div>
-      <div className="proc-grid" style={{ gridTemplateColumns: "1fr" }}>
-        {slots.map((s) => (
+      <div className="proc-stack">
+        {slots.map((s, i) => (
           <ProcedureCard
             key={s.key}
+            phase={i + 1}
             label={s.label}
             rec={plan.procedures[s.key]}
             airport={navdata[s.airport]}
@@ -234,8 +239,9 @@ export function ProcedurePanel({
 }
 
 export function ProcedureCard({
-  label, rec, airport, kind, overridden, onOverride,
+  phase, label, rec, airport, kind, overridden, onOverride,
 }: {
+  phase: number;
   label: string;
   rec: ProcedureRecommendation;
   airport?: AirportNavData;
@@ -253,19 +259,28 @@ export function ProcedureCard({
 
   return (
     <div className="proc">
-      <h3>{label}{overridden && <span style={{ color: "var(--accent)" }}> · overridden</span>}</h3>
-      <div className="val">
-        {display ?? <span className="none">none selected</span>}
-        {kind !== "runway" && rec.transition && <span className="faint" style={{ fontSize: 13 }}> via {rec.transition}</span>}
-      </div>
-      <div className="row" style={{ gap: 8, fontSize: 12 }}>
-        <span className="faint">Confidence: <strong style={{ color: confColor }}>{rec.confidence.level}</strong></span>
-        <span className="faint mono">{rec.confidence.score.toFixed(2)}</span>
+      <div className="proc-top">
+        <span className="proc-phase">{phase}</span>
+        <div className="proc-head">
+          <h3>{label}</h3>
+          {overridden && <span className="prov inferred" style={{ marginTop: 3 }}>overridden</span>}
+        </div>
         <span className={`prov ${rec.validationStatus === "valid" ? "verified" : rec.validationStatus === "valid_with_warnings" ? "inferred" : rec.validationStatus === "invalid" ? "unavailable" : "generated"}`}>
           {rec.validationStatus.replace(/_/g, " ")}
         </span>
       </div>
-      <div className="confbar"><i style={{ width: `${rec.confidence.score * 100}%`, background: confColor }} /></div>
+      <div className="val">
+        {display ?? <span className="none">none selected</span>}
+        {kind !== "runway" && rec.transition && <span className="proc-via">via {rec.transition}</span>}
+      </div>
+      <div className="proc-conf">
+        <div className="proc-conf-row">
+          <span className="faint">Confidence</span>
+          <strong style={{ color: confColor, textTransform: "capitalize" }}>{rec.confidence.level}</strong>
+          <span className="faint mono">{rec.confidence.score.toFixed(2)}</span>
+        </div>
+        <div className="confbar"><i style={{ width: `${rec.confidence.score * 100}%`, background: confColor }} /></div>
+      </div>
       <details className="evidence">
         <summary>Why this was chosen ({rec.selectionReasons.length + rec.confidence.evidenceMissing.length} evidence items)</summary>
         {rec.selectionReasons.length > 0 && <>

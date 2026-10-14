@@ -137,7 +137,7 @@ export default function HistoryView() {
 
   return (
     <div>
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card lookup-card" style={{ marginBottom: 18 }}>
         <h2>Historical Replay — no paid subscription needed</h2>
         <div className="sub">
           FlightDeck looks for past-flight data from free and your own sources, in order:{" "}
@@ -146,35 +146,35 @@ export default function HistoryView() {
           <b>explicitly labelled reconstructed reference</b>. A paid FlightAware key is strictly optional — if one is
           configured it is tried (after the free sources), otherwise it is skipped without breaking anything.
         </div>
-        <div className="row">
-          <div className="field" style={{ marginBottom: 0, minWidth: 150 }}>
+        <div className="lookup-grid-5">
+          <div className="field" style={{ marginBottom: 0 }}>
             <label>Flight number</label>
             <input value={flightNumber} onChange={(e) => setFlightNumber(e.target.value)} placeholder="EI106" />
           </div>
-          <div className="field" style={{ marginBottom: 0, minWidth: 170 }}>
+          <div className="field" style={{ marginBottom: 0 }}>
             <label>Date</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
-          <div className="field" style={{ marginBottom: 0, minWidth: 120 }}>
+          <div className="field" style={{ marginBottom: 0 }}>
             <label>Origin (for OpenSky)</label>
             <input value={origin} onChange={(e) => setOrigin(e.target.value.toUpperCase())} placeholder="KJFK" maxLength={4} />
           </div>
-          <div className="field" style={{ marginBottom: 0, minWidth: 120 }}>
+          <div className="field" style={{ marginBottom: 0 }}>
             <label>Destination</label>
             <input value={destination} onChange={(e) => setDestination(e.target.value.toUpperCase())} placeholder="EIDW" maxLength={4} />
           </div>
-          <div className="field" style={{ marginBottom: 0, minWidth: 220 }}>
+          <div className="field" style={{ marginBottom: 0 }}>
             <label>Aircraft profile</label>
             <select value={aircraftId} onChange={(e) => setAircraftId(e.target.value)}>
               <option value="">Auto (from lookup)</option>
               {profiles.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
             </select>
           </div>
-          <div style={{ alignSelf: "flex-end" }}>
-            <button className="btn" onClick={() => void find(false)} disabled={loading || !flightNumber || !date}>
-              {loading ? <><span className="spin" />Searching…</> : "Find historical data"}
-            </button>
-          </div>
+        </div>
+        <div className="lookup-actions">
+          <button className="btn" onClick={() => void find(false)} disabled={loading || !flightNumber || !date}>
+            {loading ? <><span className="spin" />Searching…</> : "Find historical data"}
+          </button>
         </div>
         <div className="faint mt" style={{ fontSize: 12 }}>
           OpenSky needs the origin airport and a free OpenSky API client (no payment — add it in Settings;
@@ -232,18 +232,22 @@ export default function HistoryView() {
                   Used when the source has no altitude (e.g. reconstructions). Track sources already derive it from the recorded altitudes.
                 </span>
               </div>
+              <div className="source-options">
               {result.options.map((o, i) => (
-                <div key={`${o.source}-${i}`} className="row" style={{ justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderTop: i > 0 ? "1px solid var(--line)" : "none" }}>
-                  <span className="row" style={{ gap: 10 }}>
-                    <strong>{o.label}</strong>
-                    <TrackKindBadge kind={o.trackKind} />
-                    <span className="faint">{o.detail}</span>
-                  </span>
+                <div key={`${o.source}-${i}`} className="source-option">
+                  <div className="source-option-main">
+                    <div className="source-option-title">{o.label}</div>
+                    <div className="source-option-meta">
+                      <TrackKindBadge kind={o.trackKind} />
+                      <span className="faint">{o.detail}</span>
+                    </div>
+                  </div>
                   <button className="btn small" onClick={() => void planFrom(o)} disabled={planning !== null}>
                     {planning === o.source ? "Planning…" : o.track.length >= 2 ? "Build flyable IFR plan" : "Plan from this source"}
                   </button>
                 </div>
               ))}
+              </div>
             </div>
           )}
         </>
