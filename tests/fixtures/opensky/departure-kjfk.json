@@ -1,0 +1,52 @@
+[
+  {
+    "icao24": "4ca7c3",
+    "firstSeen": 1791280200,
+    "estDepartureAirport": "KJFK",
+    "lastSeen": 1791304200,
+    "estArrivalAirport": "EIDW",
+    "callsign": "EIN106  ",
+    "estDepartureAirportHorizDistance": 312,
+    "estDepartureAirportVertDistance": 12,
+    "estArrivalAirportHorizDistance": 428,
+    "estArrivalAirportVertDistance": 18,
+    "departureAirportCandidatesCount": 2,
+    "arrivalAirportCandidatesCount": 1
+  },
+  {
+    "icao24": "4ca7c3",
+    "firstSeen": 1791193800,
+    "estDepartureAirport": "KJFK",
+    "lastSeen": 1791217800,
+    "estArrivalAirport": "EIDW",
+    "callsign": "EIN106  ",
+    "estDepartureAirportHorizDistance": 290,
+    "estDepartureAirportVertDistance": 10,
+    "estArrivalAirportHorizDistance": 401,
+    "estArrivalAirportVertDistance": 15,
+    "departureAirportCandidatesCount": 1,
+    "arrivalAirportCandidatesCount": 1
+  },
+  {
+    "icao24": "a1b2c3",
+    "firstSeen": 1791281000,
+    "estDepartureAirport": "KJFK",
+    "lastSeen": 1791300000,
+    "estArrivalAirport": "EGLL",
+    "callsign": "BAW179  ",
+    "estDepartureAirportHorizDistance": 200,
+    "estDepartureAirportVertDistance": 8,
+    "estArrivalAirportHorizDistance": 350,
+    "estArrivalAirportVertDistance": 20,
+    "departureAirportCandidatesCount": 1,
+    "arrivalAirportCandidatesCount": 1
+  },
+  {
+    "icao24": null,
+    "firstSeen": 1791282000,
+    "estDepartureAirport": "KJFK",
+    "lastSeen": null,
+    "estArrivalAirport": null,
+    "callsign": null
+  }
+]

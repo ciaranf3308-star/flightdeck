@@ -1,0 +1,1 @@
+{"compilerOptions":{"module":"NodeNext","moduleResolution":"NodeNext","outDir":"dist","rootDir":"src"},"extends":"../../tsconfig.base.json","include":["src"],"references":[{"path":"../../packages/shared-models"},{"path":"../../packages/flight-providers"},{"path":"../../packages/navigation"},{"path":"../../packages/route-engine"},{"path":"../../packages/aircraft-adapters"}]}

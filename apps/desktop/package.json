@@ -1,0 +1,25 @@
+{
+  "dependencies": {
+    "@flightdeck/shared-models": "0.1.0",
+    "leaflet": "^1.9.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.12",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^7.3.7"
+  },
+  "name": "@flightdeck/desktop",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json && vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "type": "module",
+  "version": "0.2.1"
+}

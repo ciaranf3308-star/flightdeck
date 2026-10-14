@@ -1,0 +1,18 @@
+{
+  "dependencies": {
+    "@flightdeck/shared-models": "0.1.0",
+    "zod": "^3.23.8"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "name": "@flightdeck/navigation",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && mkdir -p dist/data && cp src/data/*.json dist/data/",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "0.1.0"
+}

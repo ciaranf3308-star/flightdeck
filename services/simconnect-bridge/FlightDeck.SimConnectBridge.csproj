@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      FlightDeck SimConnect bridge: a small .NET 8 console app that reads live
+      aircraft state from Microsoft Flight Simulator 2024 via SimConnect and
+      POSTs it to the FlightDeck planning API (http://localhost:8124/api/telemetry).
+      Runs as a SEPARATE sidecar process alongside the Tauri desktop shell.
+    -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>FlightDeck.SimConnectBridge</AssemblyName>
+    <RootNamespace>FlightDeck.SimConnectBridge</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- SimConnect's managed client is Windows-only; this project builds on Windows. -->
+    <SupportedPlatforms>Windows</SupportedPlatforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Official MSFS 2024 SimConnect managed client.
+
+      IMPORTANT: this package is distributed WITH the MSFS 2024 SDK
+      (see the SDK documentation, "SimConnect SDK" section) — it is NOT
+      published on the public nuget.org gallery. Align the Version
+      attribute below with the version shipped by your installed SDK
+      before running `dotnet restore`; if restore cannot find the
+      package, add the SDK's local NuGet feed as a package source
+      (see README.md in this folder).
+    -->
+    <PackageReference Include="Microsoft.FlightSimulator.SimConnect" Version="1.0.0" />
+  </ItemGroup>
+
+</Project>

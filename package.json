@@ -1,0 +1,29 @@
+{
+  "description": "FlightDeck \u2014 MSFS 2024 desktop companion for commercial IFR flight planning",
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^26.6.5",
+    "typescript": "^5.6.3",
+    "vitest": "^3.0.5"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "name": "flightdeck",
+  "private": true,
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev:api": "npm run dev --workspace=@flightdeck/planning-api",
+    "dev:desktop": "npm run dev --workspace=@flightdeck/desktop",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b"
+  },
+  "type": "module",
+  "version": "0.2.1",
+  "workspaces": [
+    "apps/*",
+    "services/planning-api",
+    "packages/*"
+  ]
+}

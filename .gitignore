@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+*.local
+.DS_Store
+# Tauri
+apps/desktop/src-tauri/target/
+# SQLite runtime DBs (fixtures stay tracked)
+*.db
+*.db-journal
+# Env / secrets — never commit
+.env
+.env.*
+!.env.example
+# Vite
+apps/desktop/dist/
+# C# build
+services/simconnect-bridge/bin/
+services/simconnect-bridge/obj/
