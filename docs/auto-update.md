@@ -36,31 +36,25 @@ Download and **Install & restart** buttons, plus the feed URL and auto-check tog
 
 ## Hosting the feed
 
-The updater is fully built, but the feed needs a stable HTTPS home.
-Recommended: **GitHub Releases** in a FlightDeck repo.
+Live since 0.2.2: https://github.com/ciaranf3308-star/flightdeck (public repo).
 
 One command publishes a release (builds the installer, hashes it, writes
 `latest.json`, creates the GitHub release with both files as assets):
 
 ```bash
-./installer/publish-release.sh owner/repo "What's new in 0.2.2"
+./installer/publish-release.sh ciaranf3308-star/flightdeck "What's new"
 ```
 
-The app's feed URL is then:
+The app's feed URL is:
 
 ```
-https://github.com/owner/repo/releases/latest/download/latest.json
+https://github.com/ciaranf3308-star/flightdeck/releases/latest/download/latest.json
 ```
 
-Two ways to point the app at it:
-
-1. **Per install**: paste it once in Settings → App updates → Update feed URL.
-2. **Baked in**: set `"url"` in `installer/update-feed.json` before building —
-   every install from that build phones home automatically (an explicit setting
-   still overrides it; unchecking "Check automatically" opts out).
-
-Until a feed URL exists anywhere, the updater stays dormant: no checks, no
-banners, no network traffic.
+Since 0.2.2 it is baked into `installer/update-feed.json`, so fresh installs
+phone home automatically. An explicit Settings value still overrides it;
+unchecking "Check automatically" opts out. `installer/staging/` must stay
+git-ignored (it holds the 83 MB portable node.exe).
 
 ## Security notes
 
