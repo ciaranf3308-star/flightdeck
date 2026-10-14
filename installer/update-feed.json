@@ -1,1 +1,4 @@
-{"_comment":"Baked-in update feed for the Windows installer. Set \"url\" to the stable latest.json URL (e.g. https://github.com/OWNER/REPO/releases/latest/download/latest.json). Empty url = updater stays dormant until a feed is entered in Settings.","url":""}
+{
+  "_comment": "Baked-in update feed for the Windows installer. Set \"url\" to the stable latest.json URL (e.g. https://github.com/OWNER/REPO/releases/latest/download/latest.json). Empty url = updater stays dormant until a feed is entered in Settings.",
+  "url": "https://github.com/ciaranf3308-star/flightdeck/releases/latest/download/latest.json"
+}

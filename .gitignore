@@ -17,3 +17,4 @@ apps/desktop/dist/
 # C# build
 services/simconnect-bridge/bin/
 services/simconnect-bridge/obj/
+installer/staging/
