@@ -27,17 +27,30 @@ ground truth, not the doc.** Any discrepancy goes into research/api-research.md.
 
 Goal: get the plan into the aircraft's FMGC/MCDU with minimum manual entry.
 
-Honest baseline: there is **no documented programmatic injection path** into an
-aircraft's flight computer from an external app (SimConnect's flight-plan load
-updates the legacy ATC plan, not the avionics). Realistic sync stories, in order:
+Studied 2026-10-14 — verdict: **the exported PLN does NOT auto-load into the
+iniBuilds A330-300's MCDU.** iniBuilds staff confirm on their forum (Dec 2024,
+"Can't load plan from msfs EFB to all iniBuilds Airbus aircraft") that the MSFS
+2024 universal EFB cannot feed their Airbus fleet — "Send route to avionics" does
+nothing on iniBuilds Airbuses, and integration needs a Microsoft/SDK decision.
+A Sep 2025 user still lists working "send to avionics" as a missing must-have.
+SimConnect can't inject either (it updates the legacy ATC plan, not the FMGC).
+The flight director itself is FMGC-driven: once the route is in the MCDU by ANY
+means, the ND shows it, FD bars guide, and NAV (push HDG knob) flies it laterally.
 
-1. **EFB → aircraft (preferred where supported):** some aircraft (e.g. iniBuilds A330,
-   Fenix A320) can import the EFB flight plan into the FMGC. Test: load the plan in
-   the EFB, then use the aircraft's EFB-import / company-route function; record
-   whether waypoints, cruise alt, and cost index transfer, and what needs manual entry.
-2. **Manual MCDU entry:** fall back to entering the TRK waypoints as lat/long
-   waypoints. Record the exact keystroke flow for the iniBuilds A330 so it can be
-   documented once and reused.
+Realistic sync stories, in order:
+
+1. **SimBrief OFP → MCDU INIT REQUEST (recommended):** the default MSFS 2024
+   Airbuses (incl. iniBuilds A330-300) support SimBrief import — MCDU INIT page →
+   INIT REQUEST pulls the OFP into the flight plan. Gotcha (per Simulation Daily):
+   do NOT pre-select the destination on the world map or INIT REQUEST won't appear.
+   Build the SimBrief flight with the custom route string below so the OFP matches
+   the FlightDeck flyable reference. Then select SID/STAR/approach on the MCDU
+   DEPARTURE/ARRIVAL pages as usual.
+2. **Manual MCDU entry:** enter the TRK/OCN waypoints as lat/long pilot waypoints
+   on the F-PLN page (Airbus format below). Record the exact keystroke flow once
+   and reuse. Tedious but always works.
+3. **"Send to Avionics" from the EFB:** worth one try in-sim, but expect it to do
+   nothing on the iniBuilds Airbus per the forum thread above.
 3. **SimBrief OFP as reference:** FlightDeck's SimBrief Stage-1 import already
    works — compare its OFP route against the adsb.aero-derived plan for the same
    flight and note divergences.
