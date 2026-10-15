@@ -77,6 +77,46 @@ universal EFB cannot feed iniBuilds Airbuses. That is STALE.
    confirmed by the forum report), then confirm ND display, FD bars, and NAV
    capture after takeoff.
 
+## Approach / ILS / procedures — how MSFS 2024 configures them (2026-10-15)
+
+The user's test: the .fpl company route loaded the enroute path but no
+approach/ILS. That is the format working as designed, NOT a FlightDeck bug:
+the iniBuilds .fpl format has NO fields for procedures at all — header
+(AIRLINE/FLTID/CYCLE/ADEP/ADES/ALTN/CRUISE) + waypoint lines only. The Jan-2025
+forum reporter saw exactly the same: route correct, "No Runways, No SIDs,
+nothing". After a company-route load, SID/STAR/approach are picked on the
+MCDU DEPARTURE/ARRIVAL pages.
+
+How MSFS 2024 itself does it (the EFB model the user described): procedures
+are part of the EFB flight plan, in the PLN XML as `DepartureDetails`
+(runway + SID name + transition), `ArrivalDetails` (runway + STAR +
+transition) and `ApproachDetails` (type ILS/RNAV/VOR/… + runway + transition).
+The Oct-2025 forum guide confirms SEND TO ATC AND AVIONICS carries
+"runways, SID, STAR, and approach if selected in the EFB Flight Planner app".
+
+FlightDeck's PLN exporter already emits exactly those SDK blocks
+(`packages/msfs-export/src/index.ts`, verified against the SDK
+"EFB Flight Plan XML (PLN File) Properties" spec — see
+research/api-research.md Target 3). One deliberate limit: our navdata is
+synthetic fixtures, so procedure NAMES are never emitted (the EFB would fail
+to match a fake name against the sim's real navdata); only verified
+runway numbers/designators go out, with a warning naming each omission.
+The user therefore selects the actual SID/STAR/ILS approach in the EFB —
+which is their normal workflow — and the EFB's SEND carries them.
+
+Recommended workflow (no SimBrief, minimal cockpit work):
+1. FlightDeck → export PLN (enroute + runways + FL370).
+2. EFB → load PLN → select departure runway/SID, arrival runway/STAR,
+   ILS approach + landing runway in the EFB.
+3. EFB → SEND → SEND TO ATC AND AVIONICS → spawn in the A330.
+4. Verify in MCDU F-PLN that the approach/ILS segment arrived.
+`.fpl` remains the enroute-only express path (CO ROUTE field, then
+procedures on the MCDU).
+
+STILL UNVERIFIED: whether the A330's EFB→MCDU sync delivers the approach
+segment specifically (enroute sync is confirmed by the user's test). The
+step-4 check above decides it.
+
 ## If a path passes
 Wire it into the app: Path 1 needs no app change (PLN export already exists —
 document the flow). Path 2 wants one-click "Send to A330" in the SimBrief
