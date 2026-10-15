@@ -52,17 +52,24 @@ export default function MapView({ fixes, track, showTrack, originName, destName 
       L.polyline(routeLatLngs, { color: "#7dd3fc", weight: 9, opacity: 0.16 }).addTo(layer);
       L.polyline(routeLatLngs, { color: "#7dd3fc", weight: 3, opacity: 0.95 }).addTo(layer);
     }
-    const aptIcon = (icao: string) =>
+    const aptIcon = (icao: string, stage: number) =>
       L.divIcon({
         className: "fd-apt-marker",
-        html: `<span class="fd-apt-dot"></span><span class="fd-apt-label">${icao}</span>`,
+        html: `<span class="fd-apt-dot">${stage}</span><span class="fd-apt-label">${icao}</span>`,
+        iconSize: [0, 0],
+      });
+    const stageIcon = (n: number) =>
+      L.divIcon({
+        className: "fd-stage-marker",
+        html: `<span class="fd-stage-num">${n}</span>`,
         iconSize: [0, 0],
       });
     withCoords.forEach((f) => {
       const isApt = f.type === "origin" || f.type === "destination";
       if (isApt) {
-        L.marker([f.lat as number, f.lon as number], { icon: aptIcon(f.name), interactive: true })
-          .bindTooltip(`<b>${f.name}</b>${f.note ? `<br/>${f.note}` : ""}`, {
+        const stage = f.type === "origin" ? 1 : 3;
+        L.marker([f.lat as number, f.lon as number], { icon: aptIcon(f.name, stage), interactive: true })
+          .bindTooltip(`<b>${f.name}</b> — stage ${stage}${f.note ? `<br/>${f.note}` : ""}`, {
             direction: "top",
             className: "fd-tip",
             offset: [0, -14],
@@ -84,6 +91,12 @@ export default function MapView({ fixes, track, showTrack, originName, destName 
       }
       bounds.push([f.lat as number, f.lon as number]);
     });
+    // Stage 2 badge at the mid-route fix — ties the map to the flight-stages list.
+    const enroute = withCoords.filter((f) => f.type !== "origin" && f.type !== "destination");
+    const mid = enroute.length > 0 ? enroute[Math.floor(enroute.length / 2)] : withCoords[Math.floor(withCoords.length / 2)];
+    if (mid && mid.lat != null && mid.lon != null) {
+      L.marker([mid.lat, mid.lon], { icon: stageIcon(2), interactive: false, keyboard: false }).addTo(layer);
+    }
     // Named fixes without coordinates: listed, not plotted.
     const noCoords = fixes.filter((f) => f.lat == null || f.lon == null);
 
@@ -130,6 +143,7 @@ export default function MapView({ fixes, track, showTrack, originName, destName 
       <div className="map-legend">
         <div className="map-legend-title">Legend</div>
         <div><span className="sw" style={{ background: "#7dd3fc" }} />Filed route</div>
+        <div style={{ marginTop: 5 }}><span className="sw" style={{ background: "#c8102e" }} />① Departure · ② Enroute · ③ Arrival</div>
         {showTrack && track.length > 0 && (
           <div style={{ marginTop: 5 }}><span className="sw" style={{ background: "#f5a524" }} />Recorded track · {track.length} pts</div>
         )}

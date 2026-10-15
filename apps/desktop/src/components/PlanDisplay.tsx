@@ -69,7 +69,7 @@ export function PlanResults({ initial, header }: { initial: PlanResponse; header
       {error && <div className="errbox" style={{ marginBottom: 16 }}>{error}</div>}
       <LookupCard lookup={resp.lookup} />
       <div className="grid32 mt">
-        <div>
+        <div className="map-col">
           <MapView
             fixes={resp.plan.fixes}
             track={showTrack ? (resp.lookup.recordedTrack.value ?? []) : []}
@@ -87,10 +87,9 @@ export function PlanResults({ initial, header }: { initial: PlanResponse; header
               navdata {resp.plan.navdataCycle} · filed vs actual track kept separate
             </span>
           </div>
-          <RouteString fixes={resp.plan.fixes} />
         </div>
         <div>
-          <ProcedurePanel plan={resp.plan} navdata={navdata} onOverride={applyOverride} />
+          <FlightStages plan={resp.plan} navdata={navdata} onOverride={applyOverride} />
         </div>
       </div>
       <ExportPanel plan={resp.plan} />
@@ -189,64 +188,62 @@ export function LookupCard({ lookup }: { lookup: FlightLookupResult }) {
     </div>
   );
 }
-
-export function RouteString({ fixes }: { fixes: FlightLookupResult["filedRoute"]["value"] }) {
-  if (!fixes || fixes.length === 0) return null;
-  return (
-    <div className="mt">
-      <div className="sub" style={{ marginBottom: 8 }}>Filed route — fixes without provider coordinates are hatched, not plotted</div>
-      <div className="route-strip">
-        {fixes.map((f, i) => {
-          const isApt = f.type === "origin" || f.type === "destination";
-          const noCoords = f.lat == null;
-          return (
-            <span key={i} className="rs-item">
-              {i > 0 && <span className="rs-sep" aria-hidden="true" />}
-              <span
-                className={`rs-fix${isApt ? " apt" : ""}${noCoords ? " nocoords" : ""}`}
-                title={noCoords ? "No coordinates from provider — not plotted" : `${f.lat!.toFixed(4)}, ${f.lon!.toFixed(4)}${f.note ? ` — ${f.note}` : ""}`}
-              >
-                {f.name}
-              </span>
-            </span>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-export function ProcedurePanel({
+/**
+ * Flight stages: the plan as three stages of the flight — departure, enroute,
+ * arrival — instead of a flat technical list. Each selection shows its
+ * confidence and the reasoning behind it; overrides stay one click away.
+ */
+export function FlightStages({
   plan, navdata, onOverride,
 }: {
   plan: FlightPlan;
   navdata: Record<string, AirportNavData>;
   onOverride: (slot: string, airportIcao: string, procedureId: string | null, runwayId: string | null) => void;
 }) {
-  const slots: { key: keyof FlightPlan["procedures"]; label: string; airport: string; kind: "runway" | "SID" | "STAR" | "APPROACH" }[] = [
-    { key: "departureRunway", label: "Departure runway", airport: plan.origin.icao, kind: "runway" },
-    { key: "sid", label: "SID", airport: plan.origin.icao, kind: "SID" },
-    { key: "arrivalRunway", label: "Arrival runway", airport: plan.destination.icao, kind: "runway" },
-    { key: "star", label: "STAR", airport: plan.destination.icao, kind: "STAR" },
-    { key: "approach", label: "Approach", airport: plan.destination.icao, kind: "APPROACH" },
-  ];
+  const enroute = plan.fixes.filter((f) => f.type !== "origin" && f.type !== "destination");
+  const ov = (slot: keyof FlightPlan["procedures"], airportIcao: string) =>
+    (pid: string | null, rid: string | null) => onOverride(slot, airportIcao, pid, rid);
   return (
     <div className="card">
-      <h2>Procedures</h2>
-      <div className="sub">Deterministic selection — hard constraints first, then ranking. Confidence comes from listed evidence only.</div>
-      <div className="proc-stack">
-        {slots.map((s, i) => (
-          <ProcedureCard
-            key={s.key}
-            phase={i + 1}
-            label={s.label}
-            rec={plan.procedures[s.key]}
-            airport={navdata[s.airport]}
-            kind={s.kind}
-            overridden={plan.overrides[s.key]}
-            onOverride={(pid, rid) => onOverride(s.key, s.airport, pid, rid)}
+      <h2>Flight plan</h2>
+      <div className="sub">Gate to gate, in three stages. Every selection is deterministic — the reasoning behind each one is listed, never hidden.</div>
+      <div className="stages">
+        <Stage n={1} phase="Departure" airport={`${plan.origin.icao} · ${plan.origin.name}`}>
+          <StageProcedure
+            label="Runway" rec={plan.procedures.departureRunway} kind="runway"
+            airport={navdata[plan.origin.icao]} overridden={plan.overrides.departureRunway}
+            onOverride={ov("departureRunway", plan.origin.icao)}
           />
-        ))}
+          <StageProcedure
+            label="SID" rec={plan.procedures.sid} kind="SID"
+            airport={navdata[plan.origin.icao]} overridden={plan.overrides.sid}
+            onOverride={ov("sid", plan.origin.icao)}
+          />
+        </Stage>
+        <Stage n={2} phase="Enroute" airport={plan.cruiseAltitudeFt != null ? `Cruise FL${Math.round(plan.cruiseAltitudeFt / 100)}` : undefined}>
+          <div className="stage-line">
+            <span className="stage-big">{enroute.length}</span>
+            <span className="stage-big-sub">enroute fixes, {plan.origin.icao} → {plan.destination.icao}</span>
+          </div>
+          <EnrouteFixes fixes={enroute} />
+        </Stage>
+        <Stage n={3} phase="Arrival" airport={`${plan.destination.icao} · ${plan.destination.name}`}>
+          <StageProcedure
+            label="STAR" rec={plan.procedures.star} kind="STAR"
+            airport={navdata[plan.destination.icao]} overridden={plan.overrides.star}
+            onOverride={ov("star", plan.destination.icao)}
+          />
+          <StageProcedure
+            label="Approach" rec={plan.procedures.approach} kind="APPROACH"
+            airport={navdata[plan.destination.icao]} overridden={plan.overrides.approach}
+            onOverride={ov("approach", plan.destination.icao)}
+          />
+          <StageProcedure
+            label="Runway" rec={plan.procedures.arrivalRunway} kind="runway"
+            airport={navdata[plan.destination.icao]} overridden={plan.overrides.arrivalRunway}
+            onOverride={ov("arrivalRunway", plan.destination.icao)}
+          />
+        </Stage>
       </div>
       {plan.warnings.length > 0 && (
         <div className="warnbox mt">
@@ -258,51 +255,66 @@ export function ProcedurePanel({
   );
 }
 
-export function ProcedureCard({
-  phase, label, rec, airport, kind, overridden, onOverride,
+function Stage({ n, phase, airport, children }: { n: number; phase: string; airport?: string; children: ReactNode }) {
+  return (
+    <div className="stage">
+      <span className="stage-node" aria-hidden="true">{n}</span>
+      <div className="stage-head">
+        <span className="stage-phase">{phase}</span>
+        {airport && <span className="stage-apt">{airport}</span>}
+      </div>
+      <div className="stage-body">{children}</div>
+    </div>
+  );
+}
+
+function ConfidencePill({ level }: { level: string }) {
+  const cls = level === "high" ? "high" : level === "medium" ? "medium" : level === "low" ? "low" : "unknown";
+  const label = level === "high" ? "High confidence" : level === "medium" ? "Medium confidence" : level === "low" ? "Low confidence" : "Confidence unknown";
+  return <span className={`conf ${cls}`}>{label}</span>;
+}
+
+function ValidationPill({ status }: { status: string }) {
+  if (status === "valid") return <span className="prov verified">Valid</span>;
+  if (status === "valid_with_warnings") return <span className="prov inferred">Valid with warnings</span>;
+  if (status === "invalid") return <span className="prov unavailable">Invalid</span>;
+  return <span className="prov generated">Unchecked</span>;
+}
+
+function StageProcedure({
+  label, rec, kind, airport, overridden, onOverride,
 }: {
-  phase: number;
   label: string;
   rec: ProcedureRecommendation;
-  airport?: AirportNavData;
   kind: "runway" | "SID" | "STAR" | "APPROACH";
+  airport?: AirportNavData;
   overridden?: string;
   onOverride: (procedureId: string | null, runwayId: string | null) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [choice, setChoice] = useState("");
-  const confColor = rec.confidence.level === "high" ? "var(--green)" : rec.confidence.level === "medium" ? "var(--amber)" : rec.confidence.level === "low" ? "var(--red)" : "var(--ink-3)";
   const display = kind === "runway" ? rec.runway : rec.procedureId;
   const options = !airport ? [] : kind === "runway"
     ? airport.runways.map((r) => ({ id: r.id, label: `${r.id} — ${r.lengthFt.toLocaleString()} ft${r.ils ? " · ILS" : ""}` }))
     : airport.procedures.filter((p) => p.kind === kind).map((p) => ({ id: p.id, label: `${p.id}${p.provenance === "generated" ? " (fixture)" : ""}` }));
+  const evidenceCount = rec.selectionReasons.length + rec.confidence.evidenceMissing.length;
 
   return (
-    <div className="proc">
-      <div className="proc-top">
-        <span className="proc-phase">{String(phase).padStart(2, "0")}</span>
-        <div className="proc-head">
-          <h3>{label}</h3>
-          {overridden && <span className="prov inferred" style={{ marginTop: 3 }}>overridden</span>}
-        </div>
-        <span className={`prov ${rec.validationStatus === "valid" ? "verified" : rec.validationStatus === "valid_with_warnings" ? "inferred" : rec.validationStatus === "invalid" ? "unavailable" : "generated"}`}>
-          {rec.validationStatus.replace(/_/g, " ")}
+    <div className="sproc">
+      <div className="sproc-top">
+        <span className="sproc-label">{label}</span>
+        {overridden && <span className="prov inferred">changed</span>}
+        <span className="sproc-status">
+          <ConfidencePill level={rec.confidence.level} />
+          <ValidationPill status={rec.validationStatus} />
         </span>
       </div>
-      <div className="val">
+      <div className="sproc-val">
         {display ?? <span className="none">none selected</span>}
         {kind !== "runway" && rec.transition && <span className="proc-via">via {rec.transition}</span>}
       </div>
-      <div className="proc-conf">
-        <div className="proc-conf-row">
-          <span className="faint">Confidence</span>
-          <strong style={{ color: confColor, textTransform: "capitalize" }}>{rec.confidence.level}</strong>
-          <span className="faint mono">{rec.confidence.score.toFixed(2)}</span>
-        </div>
-        <div className="confbar"><i style={{ width: `${rec.confidence.score * 100}%`, background: confColor }} /></div>
-      </div>
       <details className="evidence">
-        <summary>Why this was chosen ({rec.selectionReasons.length + rec.confidence.evidenceMissing.length} evidence items)</summary>
+        <summary>Why this was chosen{evidenceCount > 0 ? ` (${evidenceCount})` : ""}</summary>
         {rec.selectionReasons.length > 0 && <>
           <div className="for" style={{ fontWeight: 700, marginTop: 6 }}>Supporting</div>
           <ul>{rec.selectionReasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
@@ -320,20 +332,48 @@ export function ProcedureCard({
           <ul>{rec.warnings.map((r, i) => <li key={i}>{r}</li>)}</ul>
         </>}
       </details>
-      <div className="mt">
-        {!editing ? (
-          <button className="btn ghost small" onClick={() => { setEditing(true); setChoice(display ?? ""); }}>Override</button>
-        ) : (
-          <div className="row">
-            <select value={choice} onChange={(e) => setChoice(e.target.value)} style={{ flex: 1 }}>
-              <option value="">— none —</option>
-              {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-            </select>
-            <button className="btn small" onClick={() => { onOverride(kind === "runway" ? null : choice || null, kind === "runway" ? choice || null : null); setEditing(false); }}>Apply</button>
-            <button className="btn ghost small" onClick={() => setEditing(false)}>Cancel</button>
-          </div>
-        )}
-      </div>
+      {!editing ? (
+        <button className="change-link" onClick={() => { setEditing(true); setChoice(display ?? ""); }}>Change</button>
+      ) : (
+        <div className="row mt">
+          <select value={choice} onChange={(e) => setChoice(e.target.value)} style={{ flex: 1 }}>
+            <option value="">— none —</option>
+            {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+          <button className="btn small" onClick={() => { onOverride(kind === "runway" ? null : choice || null, kind === "runway" ? choice || null : null); setEditing(false); }}>Apply</button>
+          <button className="btn ghost small" onClick={() => setEditing(false)}>Cancel</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EnrouteFixes({ fixes }: { fixes: FlightPlan["fixes"] }) {
+  const [open, setOpen] = useState(false);
+  if (fixes.length === 0) return <div className="faint">No enroute fixes in this plan.</div>;
+  return (
+    <div>
+      <button className="change-link" onClick={() => setOpen((o) => !o)}>
+        {open ? "Hide fixes" : `Show all ${fixes.length} fixes`}
+      </button>
+      {open && (
+        <div className="route-strip mt">
+          {fixes.map((f, i) => {
+            const noCoords = f.lat == null;
+            return (
+              <span key={i} className="rs-item">
+                {i > 0 && <span className="rs-sep" aria-hidden="true" />}
+                <span
+                  className={`rs-fix${noCoords ? " nocoords" : ""}`}
+                  title={noCoords ? "No coordinates from provider — not plotted" : `${f.lat!.toFixed(4)}, ${f.lon!.toFixed(4)}${f.note ? ` — ${f.note}` : ""}`}
+                >
+                  {f.name}
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

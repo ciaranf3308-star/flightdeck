@@ -547,11 +547,22 @@ table.data tr:hover td { background: var(--paper); }
   color: var(--ink-3); font-weight: 700; margin-bottom: 6px;
 }
 .fd-apt-marker { background: transparent; border: none; }
+.fd-stage-marker { background: transparent; border: none; }
+.fd-stage-num {
+  position: absolute; left: -11px; top: -11px; width: 22px; height: 22px;
+  border-radius: 50%; background: var(--ink); color: #fff;
+  border: 2px solid #fff; box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-weight: 800; font-size: 11px;
+}
 .fd-apt-dot {
-  position: absolute; left: -7px; top: -7px; width: 14px; height: 14px;
-  border-radius: 50%; background: var(--red);
+  position: absolute; left: -11px; top: -11px; width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--red);
   border: 2.5px solid #fff;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-family: var(--display); font-weight: 800; font-size: 11px;
 }
 .fd-apt-label {
   position: absolute; left: 50%; top: 12px; transform: translateX(-50%);
@@ -606,37 +617,66 @@ table.data tr:hover td { background: var(--paper); }
 }
 
 /* ============================================================================
- * Procedure cards — flight phases
+ * Flight stages — the plan as a journey timeline
  * ========================================================================= */
-.proc-stack { display: grid; grid-template-columns: 1fr; gap: 0; border-top: 1px solid var(--line); }
-.proc {
-  padding: 20px 4px;
-  border-bottom: 1px solid var(--line);
-  position: relative;
+.map-col { position: sticky; top: 88px; align-self: start; }
+@media (max-width: 980px) { .map-col { position: static; } }
+.stages { position: relative; margin-top: 8px; }
+.stage { position: relative; padding: 0 0 28px 48px; }
+.stage:last-child { padding-bottom: 6px; }
+.stage::before {
+  content: ""; position: absolute; left: 15px; top: 40px; bottom: 2px;
+  width: 2px; background: var(--line); border-radius: 1px;
 }
-.proc-top { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 8px; }
-.proc-phase {
-  font-family: var(--display); font-size: 15px; font-weight: 800;
-  color: var(--ink-3); flex: none; padding-top: 2px; min-width: 28px;
-  font-variant-numeric: tabular-nums;
+.stage:last-child::before { display: none; }
+.stage-node {
+  position: absolute; left: 0; top: 0; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--ink); color: #fff;
+  font-family: var(--display); font-weight: 800; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
 }
-.proc-head { flex: 1; min-width: 0; }
-.proc h3 { margin: 0; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-3); font-family: var(--sans); font-weight: 700; }
-.proc .val {
-  font-family: var(--display); font-size: 34px; font-weight: 800; letter-spacing: -0.02em;
-  margin: 8px 0 4px; line-height: 1; color: var(--ink);
+.stage-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; padding-top: 6px; flex-wrap: wrap; }
+.stage-phase {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--red);
 }
-.proc .val .none { color: var(--ink-3); font-size: 15px; font-weight: 400; font-style: italic; font-family: var(--sans); letter-spacing: 0; }
-.proc-via { font-family: var(--sans); font-size: 13px; font-weight: 400; font-style: italic; color: var(--ink-2); letter-spacing: 0; }
-.proc-conf { margin-bottom: 4px; max-width: 420px; }
-.proc-conf-row { display: flex; align-items: baseline; gap: 10px; font-size: 12.5px; margin-bottom: 7px; }
-.proc-conf-row strong { font-size: 13px; text-transform: capitalize; }
-.proc .evidence { margin-top: 10px; }
-.proc-foot { margin-top: 12px; }
-.proc-foot select {
-  background: var(--card); border: 1px solid var(--line-strong); color: var(--ink);
-  border-radius: 8px; padding: 8px 12px; font-size: 13px; font-family: var(--mono);
+.stage-apt { font-size: 13px; color: var(--ink-2); font-weight: 600; }
+.stage-body { display: flex; flex-direction: column; gap: 18px; }
+.sproc { border-top: 1px solid var(--line); padding-top: 14px; }
+.sproc:first-child { border-top: none; padding-top: 0; }
+.sproc-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sproc-label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--ink-3);
 }
+.sproc-status { margin-left: auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sproc-val {
+  font-family: var(--display); font-size: 32px; font-weight: 800; letter-spacing: -0.02em;
+  margin: 8px 0 4px; line-height: 1.05; color: var(--ink);
+}
+.sproc-val .none { color: var(--ink-3); font-size: 15px; font-weight: 400; font-style: italic; font-family: var(--sans); letter-spacing: 0; }
+.proc-via { font-family: var(--sans); font-size: 14px; font-weight: 400; font-style: italic; color: var(--ink-2); letter-spacing: 0; }
+.sproc .evidence { margin-top: 8px; }
+.change-link {
+  background: none; border: none; color: var(--blue); font-size: 12.5px; font-weight: 600;
+  cursor: pointer; padding: 6px 0 0; font-family: var(--sans);
+}
+.change-link:hover { text-decoration: underline; }
+.conf {
+  display: inline-flex; align-items: center;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+}
+.conf.high { color: var(--green); background: var(--green-soft); }
+.conf.medium { color: var(--amber); background: var(--amber-soft); }
+.conf.low { color: var(--red); background: var(--red-soft); }
+.conf.unknown { color: var(--ink-3); background: var(--gray-soft); }
+.stage-line { display: flex; align-items: baseline; gap: 12px; }
+.stage-big {
+  font-family: var(--display); font-size: 32px; font-weight: 800; letter-spacing: -0.02em;
+  color: var(--ink); line-height: 1;
+}
+.stage-big-sub { color: var(--ink-2); font-size: 13px; }
 
 /* ============================================================================
  * Source option cards (Historical Replay)
