@@ -104,30 +104,36 @@ export default function HomeView({ onSearch, onOpenSaved, refreshToken }: Props)
 
   return (
     <div className="home">
-      <section className="hero">
-        <div className="hero-inner">
-          <div className="hero-kicker">MSFS 2024 · commercial IFR planning</div>
-          <h1>Flight<em>Deck</em></h1>
-          <p className="hero-sub">
-            Look up a real flight, replay its filed route, plan deterministic procedures, and export
-            a 2024 EFB flight plan. Save the ones you love and organize them your way.
-          </p>
-          <form className="hero-search" onSubmit={submitSearch}>
+      <section className="checkin">
+        <div className="kicker">MSFS 2024 · Commercial IFR planning</div>
+        <h1>Plan your next flight.</h1>
+        <p className="checkin-sub">
+          Look up a real flight, replay its filed route, plan deterministic procedures, and export
+          a 2024 EFB flight plan. Save the ones you love and organize them your way.
+        </p>
+        <form className="booking" onSubmit={submitSearch}>
+          <div className="booking-field">
+            <label htmlFor="fd-flight">Flight</label>
             <input
+              id="fd-flight"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Flight number — e.g. EI106"
+              placeholder="EI106"
               aria-label="Flight number"
             />
+          </div>
+          <div className="booking-field">
+            <label htmlFor="fd-date">Date</label>
             <input
+              id="fd-date"
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               aria-label="Flight date"
             />
-            <button type="submit">Look up &amp; plan</button>
-          </form>
-        </div>
+          </div>
+          <button type="submit" className="booking-submit">Look up &amp; plan</button>
+        </form>
       </section>
 
       {error && <div className="errbox home-err">{error}</div>}

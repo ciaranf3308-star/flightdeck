@@ -42,7 +42,7 @@ export default function App() {
       /* the server exits mid-response; a failed fetch is expected */
     }
     document.body.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0b0f1a;color:#e6edf7;font-family:system-ui">FlightDeck has stopped. You can close this window.</div>';
+      '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#faf8f3;color:#1a1510;font-family:system-ui">FlightDeck has stopped. You can close this window.</div>';
   }
 
   const goPlan = (flightNumber: string, date: string) => {
@@ -68,7 +68,7 @@ export default function App() {
           ))}
           {packaged && (
             <button className="navbtn" onClick={() => void quit()} disabled={quitting} title="Stop FlightDeck's background services">
-              {quitting ? "Quitting…" : "⏻ Quit"}
+              {quitting ? "Quitting…" : "Quit"}
             </button>
           )}
         </nav>
@@ -303,7 +303,7 @@ function SaveFlightButton({ lookup, plan, onSaved }: { lookup: FlightLookupResul
   }
 
   return (
-    <div className="card" style={{ marginBottom: 12, borderColor: "var(--accent)" }}>
+    <div className="card" style={{ marginBottom: 12, borderColor: "var(--red)" }}>
       <h2 style={{ fontSize: 15 }}>Save {lookup.flightNumber} <span className="faint">· {lookup.date}</span> to your library</h2>
       {cats.length > 0 && (
         <div className="field">

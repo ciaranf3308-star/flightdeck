@@ -101,73 +101,91 @@ export function PlanResults({ initial, header }: { initial: PlanResponse; header
 
 export function LookupCard({ lookup }: { lookup: FlightLookupResult }) {
   const badge = providerBadge(lookup.provider);
+  const origin = lookup.origin.value;
+  const dest = lookup.destination.value;
   return (
-    <div className="card" style={{ marginBottom: 18 }}>
-      <div className="plan-head">
-        <div className="plan-ident">{lookup.flightNumber}</div>
-        <div className="plan-route">
-          {lookup.origin.value?.icao ?? "···"}<span className="arrow">→</span>{lookup.destination.value?.icao ?? "···"}
+    <div className="card bp" style={{ marginBottom: 18 }}>
+      <div className="bp-head">
+        <div className="bp-airline">
+          <span className="bp-mark">FD</span>
+          <span className="bp-airline-name">FLIGHTDECK</span>
+          <span className="bp-airline-sub">MSFS 2024</span>
         </div>
-        <span className="faint mono" style={{ fontSize: 13 }}>{lookup.date}</span>
-        <span style={{ marginLeft: "auto" }}><ProvBadge provenance={badge.provenance} title={badge.title} /></span>
+        <div className="bp-flight">
+          <span>{lookup.flightNumber}</span>
+          <span>{lookup.date}</span>
+          <ProvBadge provenance={badge.provenance} title={badge.title} />
+        </div>
       </div>
-      <dl className="kv">
-        <dt>Route</dt>
-        <dd>
-          <FieldValue field={lookup.origin} format={(a) => `${a.icao} ${a.name}`} />
-          <span className="faint">→</span>
-          <FieldValue field={lookup.destination} format={(a) => `${a.icao} ${a.name}`} />
-        </dd>
-        <dt>Scheduled</dt>
-        <dd>
-          <FieldValue field={lookup.scheduledDeparture} format={fmtUtc} />
-          <span className="faint">→</span>
-          <FieldValue field={lookup.scheduledArrival} format={fmtUtc} />
-        </dd>
-        <dt>Actual</dt>
-        <dd>
-          <FieldValue field={lookup.actualDeparture} format={fmtUtc} />
-          <span className="faint">→</span>
-          <FieldValue field={lookup.actualArrival} format={fmtUtc} />
-        </dd>
-        <dt>Runways (actual)</dt>
-        <dd>
-          <FieldValue field={lookup.actualRunwayDeparture} naText="Not reported" />
-          <span className="faint">→</span>
-          <FieldValue field={lookup.actualRunwayArrival} naText="Not reported" />
-        </dd>
-        <dt>Aircraft</dt>
-        <dd>
-          <FieldValue field={lookup.aircraftType} naText="Not reported" />
-          <FieldValue field={lookup.registration} naText="Not reported" />
-        </dd>
-        <dt>Cruise (filed)</dt>
-        <dd><FieldValue field={lookup.filedCruiseAltitudeFt} format={(v) => `${v.toLocaleString()} ft`} /></dd>
-        <dt>Filed route</dt>
-        <dd>
-          {lookup.filedRoute.value ? (
-            <span className="row" style={{ gap: 8 }}>
-              <span>{lookup.filedRoute.value.length} fixes</span>
-              <ProvBadge provenance={lookup.filedRoute.provenance} title={lookup.filedRoute.note} />
-            </span>
-          ) : <FieldValue field={lookup.filedRoute} naText="No filed route from provider" />}
-        </dd>
-        <dt>Recorded track</dt>
-        <dd>
-          {lookup.recordedTrack.value ? (
-            <span className="row" style={{ gap: 8 }}>
-              <span>{lookup.recordedTrack.value.length} positions</span>
-              <ProvBadge provenance="verified" title="Provider: recorded ADS-B/radar track" />
-            </span>
-          ) : <FieldValue field={lookup.recordedTrack} naText="No recorded track from provider" />}
-        </dd>
-      </dl>
-      {lookup.warnings.length > 0 && (
-        <div className="warnbox mt">
-          <strong>Notes</strong>
-          <ul>{lookup.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
+      <div className="bp-route">
+        <div className="bp-apt">
+          <span className="bp-code">{origin?.icao ?? "···"}</span>
+          <span className="bp-name">{origin?.name ?? "Unknown origin"}</span>
         </div>
-      )}
+        <div className="bp-arrow" aria-hidden="true">→</div>
+        <div className="bp-apt">
+          <span className="bp-code">{dest?.icao ?? "···"}</span>
+          <span className="bp-name">{dest?.name ?? "Unknown destination"}</span>
+        </div>
+      </div>
+      <div className="bp-grid">
+        <div className="bp-cell">
+          <div className="bp-label">Scheduled</div>
+          <div className="bp-value"><FieldValue field={lookup.scheduledDeparture} format={fmtUtc} /></div>
+        </div>
+        <div className="bp-cell">
+          <div className="bp-label">Actual</div>
+          <div className="bp-value"><FieldValue field={lookup.actualDeparture} format={fmtUtc} /></div>
+        </div>
+        <div className="bp-cell">
+          <div className="bp-label">Runways</div>
+          <div className="bp-value">
+            <FieldValue field={lookup.actualRunwayDeparture} naText="—" />
+            <span className="faint"> → </span>
+            <FieldValue field={lookup.actualRunwayArrival} naText="—" />
+          </div>
+        </div>
+        <div className="bp-cell">
+          <div className="bp-label">Aircraft</div>
+          <div className="bp-value">
+            <FieldValue field={lookup.aircraftType} naText="—" />
+            {lookup.registration.value && (
+              <span className="faint"> · {lookup.registration.value}</span>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="bp-perf" aria-hidden="true" />
+      <div className="bp-stub">
+        <dl className="kv">
+          <dt>Cruise (filed)</dt>
+          <dd><FieldValue field={lookup.filedCruiseAltitudeFt} format={(v) => `${v.toLocaleString()} ft`} /></dd>
+          <dt>Filed route</dt>
+          <dd>
+            {lookup.filedRoute.value ? (
+              <span className="row" style={{ gap: 8 }}>
+                <span>{lookup.filedRoute.value.length} fixes</span>
+                <ProvBadge provenance={lookup.filedRoute.provenance} title={lookup.filedRoute.note} />
+              </span>
+            ) : <FieldValue field={lookup.filedRoute} naText="No filed route from provider" />}
+          </dd>
+          <dt>Recorded track</dt>
+          <dd>
+            {lookup.recordedTrack.value ? (
+              <span className="row" style={{ gap: 8 }}>
+                <span>{lookup.recordedTrack.value.length} positions</span>
+                <ProvBadge provenance="verified" title="Provider: recorded ADS-B/radar track" />
+              </span>
+            ) : <FieldValue field={lookup.recordedTrack} naText="No recorded track from provider" />}
+          </dd>
+        </dl>
+        {lookup.warnings.length > 0 && (
+          <div className="warnbox mt">
+            <strong>Notes</strong>
+            <ul>{lookup.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -253,7 +271,7 @@ export function ProcedureCard({
 }) {
   const [editing, setEditing] = useState(false);
   const [choice, setChoice] = useState("");
-  const confColor = rec.confidence.level === "high" ? "var(--green)" : rec.confidence.level === "medium" ? "var(--accent)" : rec.confidence.level === "low" ? "var(--red)" : "var(--text-faint)";
+  const confColor = rec.confidence.level === "high" ? "var(--green)" : rec.confidence.level === "medium" ? "var(--amber)" : rec.confidence.level === "low" ? "var(--red)" : "var(--ink-3)";
   const display = kind === "runway" ? rec.runway : rec.procedureId;
   const options = !airport ? [] : kind === "runway"
     ? airport.runways.map((r) => ({ id: r.id, label: `${r.id} — ${r.lengthFt.toLocaleString()} ft${r.ils ? " · ILS" : ""}` }))
@@ -262,7 +280,7 @@ export function ProcedureCard({
   return (
     <div className="proc">
       <div className="proc-top">
-        <span className="proc-phase">{phase}</span>
+        <span className="proc-phase">{String(phase).padStart(2, "0")}</span>
         <div className="proc-head">
           <h3>{label}</h3>
           {overridden && <span className="prov inferred" style={{ marginTop: 3 }}>overridden</span>}
@@ -307,7 +325,7 @@ export function ProcedureCard({
           <button className="btn ghost small" onClick={() => { setEditing(true); setChoice(display ?? ""); }}>Override</button>
         ) : (
           <div className="row">
-            <select value={choice} onChange={(e) => setChoice(e.target.value)} style={{ flex: 1, background: "var(--bg-soft)", border: "1px solid var(--line)", color: "var(--text)", borderRadius: 8, padding: "7px 10px" }}>
+            <select value={choice} onChange={(e) => setChoice(e.target.value)} style={{ flex: 1 }}>
               <option value="">— none —</option>
               {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
             </select>
