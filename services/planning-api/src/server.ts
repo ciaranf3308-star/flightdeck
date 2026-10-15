@@ -96,17 +96,32 @@ const TELEMETRY_STALE_MS = 5000;
 // When the sim is connected (fresh telemetry) and the user-built bridge is
 // present, a planning request for an airport with no cached procedures kicks
 // off a one-shot `--fetch-procedures` bridge run. Fire-and-forget: the
-// current plan keeps fixture behavior, and the fetch warning tells the user
-// to replan once the sim's real SID/STAR/ILS data lands.
+// Live simulator navdata fetch orchestration ---------------------------
+// When the sim is connected (fresh telemetry) and an airport has no cached
+// procedures, a planning request kicks off a one-shot navdata fetch. The
+// fetcher is a plain Node script (services/navdata-fetch/fetch-procedures.mjs)
+// speaking the SimConnect protocol via node-simconnect — no SDK, no .NET, no
+// compilation; it runs on the same Node runtime as this API (the installer
+// ships portable Node). Fire-and-forget: the current plan keeps fixture
+// behavior, and the fetch warning tells the user to replan once the sim's
+// real SID/STAR/approach data lands.
 function simNavdataConnected(): boolean {
   return Date.now() - telemetry.receivedAt <= TELEMETRY_STALE_MS;
+}
+/** Resolve the navdata fetch script (dev tree or packaged resources). */
+function navdataFetchScript(): string | null {
+  const env = process.env.FLIGHTDECK_NAVDATA_FETCH;
+  if (env && existsSync(env)) return env;
+  // server dist is at services/planning-api/dist (dev) or
+  // resources/api/dist (packaged) — the script sits two levels up in both.
+  const candidate = resolve(here, "..", "..", "navdata-fetch", "fetch-procedures.mjs");
+  return existsSync(candidate) ? candidate : null;
 }
 const simFetchInFlight = new Map<string, number>();
 function kickSimNavdataFetch(icaos: string[]): { ok: true } | { ok: false; reason: string } {
   if (!simNavdataConnected()) return { ok: false, reason: "simulator not connected" };
-  // bridgePath is declared below (function hoisting applies).
-  const exe = bridgePath();
-  if (!exe) return { ok: false, reason: "SimConnect bridge not installed" };
+  const script = navdataFetchScript();
+  if (!script) return { ok: false, reason: "navdata fetch script not installed" };
   const fresh = icaos.filter((icao) => {
     const last = simFetchInFlight.get(icao) ?? 0;
     return Date.now() - last > 120_000;
@@ -114,8 +129,8 @@ function kickSimNavdataFetch(icaos: string[]): { ok: true } | { ok: false; reaso
   if (fresh.length === 0) return { ok: false, reason: "fetch already in flight" };
   try {
     const child = spawn(
-      exe,
-      ["--fetch-procedures", fresh.join(","), "--api-url", `http://localhost:${PORT}/api/navdata/procedures`],
+      process.execPath,
+      [script, fresh.join(","), "--api-url", `http://localhost:${PORT}/api/navdata/procedures`],
       { windowsHide: true, stdio: "ignore", detached: true },
     );
     child.unref();
@@ -126,7 +141,7 @@ function kickSimNavdataFetch(icaos: string[]): { ok: true } | { ok: false; reaso
     });
     return { ok: true };
   } catch {
-    return { ok: false, reason: "could not start bridge" };
+    return { ok: false, reason: "could not start navdata fetch" };
   }
 }
 

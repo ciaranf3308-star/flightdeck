@@ -58,16 +58,24 @@ Options:
 # Post to a non-default planning API endpoint:
 .\FlightDeck.SimConnectBridge.exe --api-url http://localhost:8124/api/telemetry
 
-# One-shot live-navdata fetch: pull SID/STAR/runway/ILS data for airports
-# from the sim's OWN nav database (default or Navigraph — always matches the
-# EFB/MCDU) and POST it to the planning API. The sim must be running
-# (main menu is fine; you don't need to be in a flight).
-.\FlightDeck.SimConnectBridge.exe --fetch-procedures KJFK,EIDW `
-    --api-url http://localhost:8124/api/navdata/procedures
-
 # Usage:
 .\FlightDeck.SimConnectBridge.exe --help
 ```
+
+> **Note (0.6.0+):** the one-shot navdata fetch moved to a plain Node script —
+> `services/navdata-fetch/fetch-procedures.mjs` — which needs no SDK and no
+> compilation (it speaks the SimConnect protocol via node-simconnect and runs
+> on the Node runtime FlightDeck already ships):
+>
+> ```powershell
+> # From the installed app's resources (or the repo):
+> node .\resources\navdata-fetch\fetch-procedures.mjs KJFK,EIDW `
+>     --api-url http://localhost:8124/api/navdata/procedures
+> ```
+>
+> The app auto-spawns it when you plan with the sim connected and no cached
+> procedures exist for the airport. The C# `--fetch-procedures` mode below is
+> superseded and unmaintained.
 
 `Ctrl+C` stops the bridge gracefully (the SimConnect connection is closed).
 

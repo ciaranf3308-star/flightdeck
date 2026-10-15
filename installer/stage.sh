@@ -22,7 +22,14 @@ done
 
 echo "== staging to $STAGE =="
 rm -rf "$STAGE"
-mkdir -p "$STAGE/resources/node" "$STAGE/resources/api/node_modules/@flightdeck" "$STAGE/resources/bridge"
+mkdir -p "$STAGE/resources/node" "$STAGE/resources/api/node_modules/@flightdeck" "$STAGE/resources/bridge" "$STAGE/resources/navdata-fetch"
+# Sim navdata fetch: plain Node script + node-simconnect (no SDK, no compilation).
+# The API auto-spawns it when planning with the sim connected and no cached
+# procedures for the airport. Runs on the same portable Node as the API.
+cp "$ROOT/services/navdata-fetch/fetch-procedures.mjs" "$STAGE/resources/navdata-fetch/"
+cp "$ROOT/services/navdata-fetch/parse-facility.mjs" "$STAGE/resources/navdata-fetch/"
+cp "$ROOT/services/navdata-fetch/package.json" "$STAGE/resources/navdata-fetch/"
+cp -r "$ROOT/services/navdata-fetch/node_modules" "$STAGE/resources/navdata-fetch/node_modules"
 
 cp "$NODE_EXE" "$STAGE/resources/node/node.exe"
 cp -r services/planning-api/dist "$STAGE/resources/api/dist"
@@ -57,8 +64,12 @@ cp "$ROOT/installer/update-feed.json" "$STAGE/resources/api/update-feed.json"
 # packaged app returns state "empty".
 cp -r "$ROOT/tests/fixtures" "$STAGE/resources/api/fixtures"
 cat > "$STAGE/resources/bridge/README.txt" <<'EOF'
-Optional: SimConnect bridge (built on Windows)
-=============================================
+Optional: SimConnect bridge (telemetry only, built on Windows)
+==============================================================
+The bridge posts live telemetry (position, speed) to FlightDeck. Procedure
+data (SIDs/STARs/approaches) no longer needs it — FlightDeck fetches those
+itself with the bundled Node script at resources/navdata-fetch/.
+
 Build it on your Windows PC with the .NET 8 SDK:
 
   cd services/simconnect-bridge
