@@ -58,11 +58,47 @@ Options:
 # Post to a non-default planning API endpoint:
 .\FlightDeck.SimConnectBridge.exe --api-url http://localhost:8124/api/telemetry
 
+# One-shot live-navdata fetch: pull SID/STAR/runway/ILS data for airports
+# from the sim's OWN nav database (default or Navigraph — always matches the
+# EFB/MCDU) and POST it to the planning API. The sim must be running
+# (main menu is fine; you don't need to be in a flight).
+.\FlightDeck.SimConnectBridge.exe --fetch-procedures KJFK,EIDW `
+    --api-url http://localhost:8124/api/navdata/procedures
+
 # Usage:
 .\FlightDeck.SimConnectBridge.exe --help
 ```
 
 `Ctrl+C` stops the bridge gracefully (the SimConnect connection is closed).
+
+> **Build status:** the telemetry path is exercised in CI; `--fetch-procedures`
+> (`NavDataFetch.cs`) is written against the MSFS 2024 SDK SimConnect API
+> reference but has **not yet been compiled or run against the sim** — build
+> it on your Windows PC and verify the posted JSON before relying on it.
+> Assumptions that need a compile check are marked `ADJUST` in the source.
+
+## Live navdata: automatic SID/STAR/ILS selection
+
+The planning API can auto-select the most logical SID, STAR, and ILS
+approach for a plan — no manual EFB procedure picking — using procedure
+names read from the simulator itself:
+
+1. With MSFS 2024 running, fetch once per airport (or let the app do it:
+   planning a flight with no cached procedures while the sim is connected
+   auto-spawns a `--fetch-procedures` run and tells you to replan).
+2. The API caches the results in SQLite (`sim_navdata_*` tables), tagged
+   `SIM-YYYYMMDD` (facility data carries no AIRAC cycle — the tag records
+   *when* the names were verified against the sim).
+3. The route engine selects from the cached procedures (provenance
+   `verified`): runway match first, then the transition nearest the
+   route's first/last fix by great-circle distance, ILS preferred for
+   approaches. Every pick records its reasons; low-confidence picks stay
+   visible instead of silently degrading.
+4. The PLN exporter emits the real `DepartureFP` / `ArrivalFP` /
+   `ApproachTypeFP` names, so the EFB shows them pre-selected and
+   **SEND TO ATC AND AVIONICS** carries them to the aircraft.
+
+`GET /api/navdata/status?icao=KJFK` shows what is cached per airport.
 
 ## What it posts
 

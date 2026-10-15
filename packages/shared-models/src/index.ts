@@ -192,6 +192,8 @@ export const Procedure = z.object({
   airport: z.string(), // ICAO
   runway: z.string().nullable(), // null for runway-agnostic (rare)
   transitions: z.array(z.string()),
+  /** resolved coordinates for transitions, when sourced from live sim navdata (enables geometric selection) */
+  transitionPositions: z.record(z.string(), LatLon).optional(),
   approachKind: ApproachKind.nullable(), // set for APPROACH
   waypoints: z.array(z.string()), // fix names in order
   constraints: z.array(

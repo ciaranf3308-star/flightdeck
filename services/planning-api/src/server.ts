@@ -34,6 +34,12 @@ import {
 import type { FlightLookupResult as FlightLookupResultType } from "@flightdeck/shared-models";
 import { cacheGet, cacheSet, cacheInvalidatePrefix, db, getSetting, publicSettings, setSetting } from "./db.js";
 import {
+  SimNavDataOverlay,
+  getSimNavdataStatus,
+  storeSimNavdata,
+  type SimProcedureInput,
+} from "./simnavdata.js";
+import {
   deleteImport,
   findHistorical,
   initImportsTable,
@@ -68,7 +74,7 @@ const PKG_FIXTURES = resolve(dirname(fileURLToPath(import.meta.url)), "..", "fix
 const FIXTURES_ROOT =
   process.env.FLIGHTDECK_FIXTURES ?? (existsSync(DEV_FIXTURES) ? DEV_FIXTURES : PKG_FIXTURES);
 
-const navdb = new FixtureNavDatabase();
+const navdb = new SimNavDataOverlay(new FixtureNavDatabase());
 
 // --- live telemetry ingest (SimConnect bridge posts here) -----------------
 interface TelemetryState {
@@ -77,6 +83,44 @@ interface TelemetryState {
 }
 const telemetry: TelemetryState = { sample: null, receivedAt: 0 };
 const TELEMETRY_STALE_MS = 5000;
+
+// --- Live simulator navdata fetch orchestration ---------------------------
+// When the sim is connected (fresh telemetry) and the user-built bridge is
+// present, a planning request for an airport with no cached procedures kicks
+// off a one-shot `--fetch-procedures` bridge run. Fire-and-forget: the
+// current plan keeps fixture behavior, and the fetch warning tells the user
+// to replan once the sim's real SID/STAR/ILS data lands.
+function simNavdataConnected(): boolean {
+  return Date.now() - telemetry.receivedAt <= TELEMETRY_STALE_MS;
+}
+const simFetchInFlight = new Map<string, number>();
+function kickSimNavdataFetch(icaos: string[]): { ok: true } | { ok: false; reason: string } {
+  if (!simNavdataConnected()) return { ok: false, reason: "simulator not connected" };
+  // bridgePath is declared below (function hoisting applies).
+  const exe = bridgePath();
+  if (!exe) return { ok: false, reason: "SimConnect bridge not installed" };
+  const fresh = icaos.filter((icao) => {
+    const last = simFetchInFlight.get(icao) ?? 0;
+    return Date.now() - last > 120_000;
+  });
+  if (fresh.length === 0) return { ok: false, reason: "fetch already in flight" };
+  try {
+    const child = spawn(
+      exe,
+      ["--fetch-procedures", fresh.join(","), "--api-url", `http://localhost:${PORT}/api/navdata/procedures`],
+      { windowsHide: true, stdio: "ignore", detached: true },
+    );
+    child.unref();
+    for (const icao of fresh) simFetchInFlight.set(icao, Date.now());
+    // A failed fetch must not block retries forever.
+    child.on("error", () => {
+      for (const icao of fresh) simFetchInFlight.delete(icao);
+    });
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "could not start bridge" };
+  }
+}
 
 function providerFor(override?: string): FlightProvider {
   const setting = override ?? getSetting("provider") ?? "auto";
@@ -199,6 +243,16 @@ async function handlePlan(body: Record<string, unknown>): Promise<{ lookup: Flig
   }
   const profileId = body.aircraftProfileId as string | undefined;
   const aircraft = profileId ? getProfile(profileId) : matchProfile(lookup.aircraftType.value);
+  // Live procedure fetch: no cached sim procedures + sim connected => kick a
+  // one-shot bridge fetch. This plan keeps fixture behavior; the warning
+  // invites a replan once the sim's real SID/STAR/ILS data lands.
+  for (const ap of [lookup.origin.value.icao, lookup.destination.value.icao]) {
+    if (!getSimNavdataStatus(db, ap).cached && kickSimNavdataFetch([ap]).ok) {
+      extraWarnings.push(
+        `Live SID/STAR/approach data for ${ap} is being fetched from the simulator — plan again shortly to auto-select procedures.`,
+      );
+    }
+  }
   const wind = (v: unknown): WindSample | null => {
     if (!v || typeof v !== "object") return null;
     const w = v as Record<string, unknown>;
@@ -321,6 +375,47 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   }
   if (req.method === "GET" && pathname === "/api/aircraft") {
     return send(res, 200, { profiles: AIRCRAFT_PROFILES });
+  }
+  // -- Live simulator navdata (automatic SID/STAR/ILS selection) ---------------
+  if (req.method === "GET" && pathname === "/api/navdata/status") {
+    const icao = String(url.searchParams.get("icao") ?? "").toUpperCase();
+    if (!/^[A-Z0-9]{3,4}$/.test(icao)) throw httpError(400, "icao (3-4 chars) is required.");
+    return send(res, 200, { ...getSimNavdataStatus(db, icao), simConnected: simNavdataConnected() });
+  }
+  if (req.method === "POST" && pathname === "/api/navdata/fetch") {
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const raw = body.icao ?? body.icaos;
+    const icaos = (Array.isArray(raw) ? raw : [raw])
+      .map((s) => String(s ?? "").toUpperCase())
+      .filter((s) => /^[A-Z0-9]{3,4}$/.test(s));
+    if (icaos.length === 0) throw httpError(400, "icao is required.");
+    const started = kickSimNavdataFetch(icaos);
+    if (!started.ok) return send(res, 409, { error: started.reason });
+    return send(res, 200, { started: true, icaos });
+  }
+  if (req.method === "POST" && pathname === "/api/navdata/procedures") {
+    // Ingest from the bridge's --fetch-procedures run. Minimal validation:
+    // names are the sim's own data, never invented here.
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const icao = String(body.icao ?? "").toUpperCase();
+    if (!/^[A-Z0-9]{3,4}$/.test(icao)) throw httpError(400, "icao (3-4 chars) is required.");
+    const list = body.procedures;
+    if (!Array.isArray(list)) throw httpError(400, "procedures must be an array.");
+    const procedures: SimProcedureInput[] = list
+      .filter((p): p is Record<string, unknown> => typeof p === "object" && p !== null)
+      .map((p) => ({
+        kind: String(p.kind ?? "").toUpperCase() as "SID" | "STAR" | "APPROACH",
+        name: String(p.name ?? ""),
+        runways: Array.isArray(p.runways) ? p.runways.map(String) : [],
+        transitions: Array.isArray(p.transitions) ? p.transitions.map(String) : [],
+        transitionPositions:
+          typeof p.transitionPositions === "object" && p.transitionPositions !== null
+            ? (p.transitionPositions as Record<string, { lat: number; lon: number }>)
+            : {},
+        approachType: typeof p.approachType === "string" ? p.approachType : null,
+      }));
+    const cycle = typeof body.cycle === "string" && body.cycle ? body.cycle : undefined;
+    return send(res, 200, storeSimNavdata(db, icao, procedures, cycle));
   }
   if (req.method === "GET" && pathname.startsWith("/api/navdata/")) {
     const icao = pathname.split("/").pop()?.toUpperCase() ?? "";

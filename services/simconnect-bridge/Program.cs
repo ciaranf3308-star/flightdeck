@@ -78,6 +78,7 @@ internal static class Program
     private enum Request : uint { Aircraft = 0 }
 
     private static string _apiUrl = "http://localhost:8124/api/telemetry";
+    private static string[]? _fetchProcedures;
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(5) };
     private static readonly CancellationTokenSource Cts = new();
 
@@ -99,6 +100,15 @@ internal static class Program
 
         Console.WriteLine("FlightDeck SimConnect bridge");
         Console.WriteLine($"Telemetry endpoint: {_apiUrl}");
+
+        // One-shot live-navdata fetch (see NavDataFetch.cs). Posts straight to
+        // the planning API and exits; no telemetry loop.
+        if (_fetchProcedures is { Length: > 0 })
+        {
+            Console.WriteLine($"Fetching procedures for: {string.Join(", ", _fetchProcedures)}");
+            return await NavDataFetch.RunAsync(_fetchProcedures, _apiUrl, Cts.Token);
+        }
+
         Console.WriteLine("Press Ctrl+C to stop.");
 
         // Connection loop: if MSFS is not running, SimConnect.Open throws
@@ -154,6 +164,15 @@ internal static class Program
                     }
                     _apiUrl = args[++i];
                     break;
+                case "--fetch-procedures":
+                    if (i + 1 >= args.Length)
+                    {
+                        Console.Error.WriteLine("error: --fetch-procedures requires an ICAO list argument.");
+                        PrintUsage();
+                        return false;
+                    }
+                    _fetchProcedures = args[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    break;
                 default:
                     Console.Error.WriteLine($"error: unknown argument '{args[i]}'.");
                     PrintUsage();
@@ -167,9 +186,17 @@ internal static class Program
     {
         Console.WriteLine("""
             Usage: FlightDeck.SimConnectBridge [--api-url <url>] [--help]
+                   FlightDeck.SimConnectBridge --fetch-procedures KJFK,EIDW [--api-url <url>]
 
-              --api-url <url>   Planning API telemetry endpoint.
-                                Default: http://localhost:8124/api/telemetry
+              --api-url <url>   Planning API endpoint. Telemetry mode posts to
+                                /api/telemetry (default http://localhost:8124/api/telemetry);
+                                --fetch-procedures posts to the URL as given, e.g.
+                                http://localhost:8124/api/navdata/procedures.
+              --fetch-procedures <icao,...>
+                                One-shot: fetch SID/STAR/runway/ILS data for the
+                                given airports from the sim's own nav database via
+                                SimConnect facility data, POST it to --api-url,
+                                then exit. The sim must be running (menu is fine).
               --help, -h        Show this help.
 
             Each 1 Hz sample is POSTed as JSON:

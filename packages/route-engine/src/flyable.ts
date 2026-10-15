@@ -52,7 +52,7 @@ const R_NM = 3440.065;
 const toRad = (d: number) => (d * Math.PI) / 180;
 const toDeg = (r: number) => (r * 180) / Math.PI;
 
-function haversineNm(aLat: number, aLon: number, bLat: number, bLon: number): number {
+export function haversineNm(aLat: number, aLon: number, bLat: number, bLon: number): number {
   const dLat = toRad(bLat - aLat);
   const dLon = toRad(bLon - aLon);
   const s =

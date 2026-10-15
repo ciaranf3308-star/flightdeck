@@ -117,6 +117,50 @@ STILL UNVERIFIED: whether the A330's EFB→MCDU sync delivers the approach
 segment specifically (enroute sync is confirmed by the user's test). The
 step-4 check above decides it.
 
+## Automatic SID/STAR/ILS selection from the sim's own navdata (2026-10-15)
+
+User pushback: manually picking departure/approach/landing in the EFB (step 2
+of the recommended flow) is a workload step they want gone. It is solvable —
+the EFB knows every approach because it reads the sim's nav database, and we
+can read that same database over SimConnect facility data
+(`SimConnect_AddToFacilityDefinition` / `SimConnect_RequestFacilityData` —
+AIRPORT children APPROACH/DEPARTURE/ARRIVAL, RUNWAY ILS idents per runway end;
+verified in the MSFS 2024 SDK API reference).
+
+Built (not yet sim-verified):
+
+- Bridge one-shot mode: `FlightDeck.SimConnectBridge --fetch-procedures
+  KJFK,EIDW --api-url http://localhost:8124/api/navdata/procedures`
+  (`services/simconnect-bridge/NavDataFetch.cs` — UNCOMPILED, marked ADJUST
+  where the managed wrapper's payload shape needs a compile check). Fetches
+  SID/STAR names + runway transitions + enroute transitions, derives ILS
+  availability per runway end from the runway ILS idents, and resolves
+  transition coordinates via WAYPOINT queries. Posts JSON to the API.
+- API cache (`services/planning-api/src/simnavdata.ts`): SQLite
+  `sim_navdata_*` tables, tagged `SIM-YYYYMMDD` (facility data carries no
+  AIRAC cycle — the tag records when the names were verified). Endpoints:
+  `POST /api/navdata/fetch`, `POST /api/navdata/procedures` (bridge ingest),
+  `GET /api/navdata/status?icao=`.
+- `SimNavDataOverlay`: when sim procedures are cached, they replace the
+  synthetic fixture procedures (provenance `verified`); otherwise fixture
+  behavior is unchanged.
+- Selection (`packages/route-engine`): existing runway/continuity/ILS scoring
+  extended with geometric scoring — the transition nearest the first fix
+  (SIDs) / last fix (STARs) by great-circle distance wins; ILS still preferred
+  for approaches. Reasons recorded; low confidence stays visible.
+- Zero-click flow: planning with no cached procedures while the sim is
+  connected auto-spawns the one-shot fetch and warns to replan; the next plan
+  carries real `DepartureFP`/`ArrivalFP`/`ApproachTypeFP` names, so the EFB
+  shows them pre-selected and SEND TO ATC AND AVIONICS delivers them.
+
+Honest limits: needs the bridge built on the user's Windows PC (.NET 8 + MSFS
+2024 SDK) and the sim running for the first fetch per airport (then cached).
+Approach transitions (IAF) are not yet fetched — ILS + runway is emitted, the
+EFB/MCDU resolves the final fix. "Flawless" is the goal; unusual cases (no SID
+for a runway, multiple ILS) degrade to explicit warnings, never silent picks.
+
+Tests: 146/146 (9 new: geometric selection + cache/overlay/export pipeline).
+
 ## If a path passes
 Wire it into the app: Path 1 needs no app change (PLN export already exists —
 document the flow). Path 2 wants one-click "Send to A330" in the SimBrief

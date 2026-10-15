@@ -11,6 +11,7 @@
  * Missing data (wind, NOTAMs, navdata gaps) is represented as uncertainty in
  * evidenceMissing / warnings — never silently defaulted.
  */
+import { haversineNm } from "./flyable.js";
 import type {
   AircraftProfile,
   AirportNavData,
@@ -288,21 +289,52 @@ function selectProcedure(
   }
 
   // Ranking: prefer a transition that matches the filed route (continuity),
-  // then ILS preference for approaches, then lexical (deterministic).
+  // then geometric proximity when transition coordinates are known (live sim
+  // navdata), then ILS preference for approaches, then lexical (deterministic).
   const fixNames = new Set(filedFixes.map((f) => f.name));
+  // Reference fix for geometry: first fix after departure for SIDs, last fix
+  // before destination for STARs/approaches. Falls back to the raw ends when
+  // fix types are absent.
+  const refFix =
+    kind === "SID"
+      ? (filedFixes.find((f) => f.type !== "origin" && f.lat != null && f.lon != null) ?? filedFixes[0])
+      : ([...filedFixes].reverse().find((f) => f.type !== "destination" && f.lat != null && f.lon != null) ??
+        filedFixes[filedFixes.length - 1]);
+  const refPos = refFix && refFix.lat != null && refFix.lon != null ? { lat: refFix.lat, lon: refFix.lon } : null;
   const scored = candidates.map((p) => {
     let score = 0;
     const matchedTransition = p.transitions.find((t) => fixNames.has(t));
     if (matchedTransition) score += 10;
+    // Geometric continuity: nearest published transition to the route end.
+    // 6 pts at 0 nm, decaying to 0 at 1200 nm. Only applies when the sim
+    // supplied transition coordinates.
+    let geoTransition: string | null = null;
+    let geoDistNm: number | null = null;
+    if (refPos && p.transitionPositions) {
+      for (const t of p.transitions) {
+        const pos = p.transitionPositions[t];
+        if (!pos) continue;
+        const d = haversineNm(refPos.lat, refPos.lon, pos.lat, pos.lon);
+        if (geoDistNm == null || d < geoDistNm) {
+          geoDistNm = d;
+          geoTransition = t;
+        }
+      }
+      if (geoDistNm != null) score += Math.max(0, 6 - geoDistNm / 200);
+    }
     if (kind === "APPROACH" && preferIls && p.approachKind === "ILS") score += 5;
     if (kind === "APPROACH" && p.approachKind === "ILS") score += 2; // ILS still outranks RNAV by capability
-    return { p, score, matchedTransition: matchedTransition ?? null };
+    return { p, score, matchedTransition: matchedTransition ?? null, geoTransition, geoDistNm };
   });
   scored.sort((a, b) => b.score - a.score || a.p.id.localeCompare(b.p.id));
   const best = scored[0];
 
   forE.push(`${kind} ${best.p.id} exists in navdata cycle ${navdataCycle} for runway ${runwayId}.`);
   if (best.matchedTransition) forE.push(`Transition ${best.matchedTransition} matches the filed route (continuity).`);
+  else if (best.geoTransition && best.geoDistNm != null)
+    forE.push(
+      `Transition ${best.geoTransition} is the nearest published transition to the ${kind === "SID" ? "first" : "last"} route fix (${Math.round(best.geoDistNm)} nm).`,
+    );
   else {
     missing.push("No filed-route fix matches a published transition.");
     warnings.push(`${best.p.id} has no transition on the filed route — expect vectors or a discontinuity.`);
@@ -320,7 +352,7 @@ function selectProcedure(
   return {
     procedureId: best.p.id,
     runway: runwayId,
-    transition: best.matchedTransition,
+    transition: best.matchedTransition ?? best.geoTransition,
     navdataCycle,
     selectionReasons: forE,
     warnings,
