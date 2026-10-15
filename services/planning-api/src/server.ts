@@ -40,6 +40,14 @@ import {
   type SimProcedureInput,
 } from "./simnavdata.js";
 import {
+  UserProcedureOverlay,
+  applyUserProcedures,
+  deleteUserProcedure,
+  getUserProcedure,
+  listUserProcedures,
+  saveUserProcedure,
+} from "./userprocedures.js";
+import {
   deleteImport,
   findHistorical,
   initImportsTable,
@@ -74,7 +82,7 @@ const PKG_FIXTURES = resolve(dirname(fileURLToPath(import.meta.url)), "..", "fix
 const FIXTURES_ROOT =
   process.env.FLIGHTDECK_FIXTURES ?? (existsSync(DEV_FIXTURES) ? DEV_FIXTURES : PKG_FIXTURES);
 
-const navdb = new SimNavDataOverlay(new FixtureNavDatabase());
+const navdb = new UserProcedureOverlay(new SimNavDataOverlay(new FixtureNavDatabase()), db);
 
 // --- live telemetry ingest (SimConnect bridge posts here) -----------------
 interface TelemetryState {
@@ -274,6 +282,9 @@ async function handlePlan(body: Record<string, unknown>): Promise<{ lookup: Flig
     date: lookup.date,
   });
   plan.registration = lookup.registration.value;
+  // Teach-once: user-saved procedures (from the sim's EFB lists) beat fixture
+  // selection deterministically, unless the plan carries an explicit override.
+  applyUserProcedures(db, plan);
   if (extraWarnings.length > 0) plan.warnings.push(...extraWarnings);
   return { lookup, plan };
 }
@@ -416,6 +427,37 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
       }));
     const cycle = typeof body.cycle === "string" && body.cycle ? body.cycle : undefined;
     return send(res, 200, storeSimNavdata(db, icao, procedures, cycle));
+  }
+  // -- User-taught procedures ("teach once") --------------------------------
+  // Real procedure names read off the sim's EFB lists, saved per
+  // airport+runway+kind and reused automatically by future plans.
+  if (req.method === "GET" && pathname === "/api/user-procedures") {
+    const icao = url.searchParams.get("icao") ?? undefined;
+    return send(res, 200, { procedures: listUserProcedures(db, icao) });
+  }
+  if (req.method === "POST" && pathname === "/api/user-procedures") {
+    const body = (await readJson(req)) as Record<string, unknown>;
+    try {
+      const saved = saveUserProcedure(db, {
+        icao: body.icao as string,
+        runway: body.runway as string,
+        kind: body.kind as "SID" | "STAR" | "APPROACH",
+        name: body.name as string,
+        transition: (body.transition as string | null) ?? null,
+        approachKind: (body.approachKind as string | null) ?? null,
+      });
+      return send(res, 200, { ok: true, procedure: saved });
+    } catch (e) {
+      throw httpError(400, (e as Error).message);
+    }
+  }
+  if (req.method === "DELETE" && pathname === "/api/user-procedures") {
+    const icao = url.searchParams.get("icao") ?? "";
+    const runway = url.searchParams.get("runway") ?? "";
+    const kind = url.searchParams.get("kind") ?? "";
+    if (!icao || !runway || !kind) throw httpError(400, "icao, runway and kind are required.");
+    const deleted = deleteUserProcedure(db, icao, runway, kind);
+    return send(res, 200, { ok: deleted });
   }
   if (req.method === "GET" && pathname.startsWith("/api/navdata/")) {
     const icao = pathname.split("/").pop()?.toUpperCase() ?? "";

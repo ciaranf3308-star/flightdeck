@@ -63,6 +63,11 @@ export const api = {
     req<{ plan: FlightPlan }>("/api/plan/override", { method: "POST", body: JSON.stringify(args) }),
   aircraft: () => req<{ profiles: AircraftProfile[] }>("/api/aircraft"),
   navdata: (icao: string) => req<AirportNavData>(`/api/navdata/${icao}`),
+  /** Teach-once: real procedure names read off the sim's EFB lists. */
+  userProcedures: {
+    save: (args: { icao: string; runway: string; kind: "SID" | "STAR" | "APPROACH"; name: string; transition?: string | null; approachKind?: string | null }) =>
+      req<{ ok: boolean }>("/api/user-procedures", { method: "POST", body: JSON.stringify(args) }),
+  },
   simbrief: (user?: string) =>
     req<{ found: boolean; ofp?: SimBriefOfpSummary; message?: string; error?: string }>("/api/simbrief", {
       method: "POST",

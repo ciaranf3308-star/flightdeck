@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { mkdirSync } from "node:fs";
 import { initLibraryTables } from "./library.js";
 import { initImportsTable } from "./history.js";
+import { initUserProcedureTables } from "./userprocedures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 // dist/ -> package root -> ../../data
@@ -35,6 +36,7 @@ CREATE TABLE IF NOT EXISTS lookup_cache (
 
 initLibraryTables(db);
 initImportsTable(db);
+initUserProcedureTables(db);
 
 export function getSetting(key: string): string | null {
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string } | undefined;

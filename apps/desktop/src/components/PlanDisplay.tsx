@@ -211,12 +211,14 @@ export function FlightStages({
         <Stage n={1} phase="Departure" airport={`${plan.origin.icao} · ${plan.origin.name}`}>
           <StageProcedure
             label="Runway" rec={plan.procedures.departureRunway} kind="runway"
-            airport={navdata[plan.origin.icao]} overridden={plan.overrides.departureRunway}
+            airport={navdata[plan.origin.icao]} airportIcao={plan.origin.icao}
+            runway={plan.procedures.departureRunway.runway} overridden={plan.overrides.departureRunway}
             onOverride={ov("departureRunway", plan.origin.icao)}
           />
           <StageProcedure
             label="SID" rec={plan.procedures.sid} kind="SID"
-            airport={navdata[plan.origin.icao]} overridden={plan.overrides.sid}
+            airport={navdata[plan.origin.icao]} airportIcao={plan.origin.icao}
+            runway={plan.procedures.departureRunway.runway} overridden={plan.overrides.sid}
             onOverride={ov("sid", plan.origin.icao)}
           />
         </Stage>
@@ -230,17 +232,20 @@ export function FlightStages({
         <Stage n={3} phase="Arrival" airport={`${plan.destination.icao} · ${plan.destination.name}`}>
           <StageProcedure
             label="STAR" rec={plan.procedures.star} kind="STAR"
-            airport={navdata[plan.destination.icao]} overridden={plan.overrides.star}
+            airport={navdata[plan.destination.icao]} airportIcao={plan.destination.icao}
+            runway={plan.procedures.arrivalRunway.runway} overridden={plan.overrides.star}
             onOverride={ov("star", plan.destination.icao)}
           />
           <StageProcedure
             label="Approach" rec={plan.procedures.approach} kind="APPROACH"
-            airport={navdata[plan.destination.icao]} overridden={plan.overrides.approach}
+            airport={navdata[plan.destination.icao]} airportIcao={plan.destination.icao}
+            runway={plan.procedures.arrivalRunway.runway} overridden={plan.overrides.approach}
             onOverride={ov("approach", plan.destination.icao)}
           />
           <StageProcedure
             label="Runway" rec={plan.procedures.arrivalRunway} kind="runway"
-            airport={navdata[plan.destination.icao]} overridden={plan.overrides.arrivalRunway}
+            airport={navdata[plan.destination.icao]} airportIcao={plan.destination.icao}
+            runway={plan.procedures.arrivalRunway.runway} overridden={plan.overrides.arrivalRunway}
             onOverride={ov("arrivalRunway", plan.destination.icao)}
           />
         </Stage>
@@ -282,22 +287,61 @@ function ValidationPill({ status }: { status: string }) {
 }
 
 function StageProcedure({
-  label, rec, kind, airport, overridden, onOverride,
+  label, rec, kind, airport, airportIcao, runway, overridden, onOverride,
 }: {
   label: string;
   rec: ProcedureRecommendation;
   kind: "runway" | "SID" | "STAR" | "APPROACH";
   airport?: AirportNavData;
+  airportIcao: string;
+  runway: string | null;
   overridden?: string;
   onOverride: (procedureId: string | null, runwayId: string | null) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [choice, setChoice] = useState("");
+  const [manualName, setManualName] = useState("");
+  const [manualTransition, setManualTransition] = useState("");
+  const [manualApproachKind, setManualApproachKind] = useState("ILS");
+  const [teachError, setTeachError] = useState("");
+  const [saving, setSaving] = useState(false);
   const display = kind === "runway" ? rec.runway : rec.procedureId;
+  const isSynthetic = kind !== "runway" && (!display || rec.warnings.some((w) => w.includes("synthetic fixture")));
   const options = !airport ? [] : kind === "runway"
     ? airport.runways.map((r) => ({ id: r.id, label: `${r.id} — ${r.lengthFt.toLocaleString()} ft${r.ils ? " · ILS" : ""}` }))
-    : airport.procedures.filter((p) => p.kind === kind).map((p) => ({ id: p.id, label: `${p.id}${p.provenance === "generated" ? " (fixture)" : ""}` }));
+    : airport.procedures.filter((p) => p.kind === kind).map((p) => ({
+        id: p.id,
+        label: `${p.id}${p.provenance === "generated" ? " (fixture)" : ""}${p.note === "Entered by you from the simulator's EFB procedure list." ? " (saved)" : ""}`,
+      }));
   const evidenceCount = rec.selectionReasons.length + rec.confidence.evidenceMissing.length;
+
+  async function applyChange() {
+    const taught = manualName.trim().toUpperCase();
+    if (taught && kind !== "runway") {
+      if (!runway) { setTeachError("No runway selected for this stage yet."); return; }
+      setSaving(true);
+      setTeachError("");
+      try {
+        await api.userProcedures.save({
+          icao: airportIcao,
+          runway,
+          kind,
+          name: taught,
+          transition: kind === "APPROACH" ? null : (manualTransition.trim().toUpperCase() || null),
+          approachKind: kind === "APPROACH" ? manualApproachKind : null,
+        });
+        onOverride(taught, null);
+        setEditing(false);
+      } catch (e) {
+        setTeachError((e as Error).message);
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+    onOverride(kind === "runway" ? null : choice || null, kind === "runway" ? choice || null : null);
+    setEditing(false);
+  }
 
   return (
     <div className="sproc">
@@ -332,16 +376,53 @@ function StageProcedure({
           <ul>{rec.warnings.map((r, i) => <li key={i}>{r}</li>)}</ul>
         </>}
       </details>
+      {isSynthetic && (
+        <div className="teach-hint">
+          Not a published procedure — the EFB will show <b>None</b>. Hit <b>Change</b>, enter the
+          exact name from your simulator's EFB (<b>ADD ARRIVAL</b> / <b>ADD APPROACH</b>), and
+          FlightDeck remembers it for {airportIcao}{runway ? ` runway ${runway}` : ""}.
+        </div>
+      )}
       {!editing ? (
-        <button className="change-link" onClick={() => { setEditing(true); setChoice(display ?? ""); }}>Change</button>
+        <button className="change-link" onClick={() => { setEditing(true); setChoice(display ?? ""); setManualName(""); setManualTransition(""); setTeachError(""); }}>Change</button>
       ) : (
-        <div className="row mt">
-          <select value={choice} onChange={(e) => setChoice(e.target.value)} style={{ flex: 1 }}>
-            <option value="">— none —</option>
-            {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
-          <button className="btn small" onClick={() => { onOverride(kind === "runway" ? null : choice || null, kind === "runway" ? choice || null : null); setEditing(false); }}>Apply</button>
-          <button className="btn ghost small" onClick={() => setEditing(false)}>Cancel</button>
+        <div className="mt">
+          <div className="row">
+            <select value={choice} onChange={(e) => setChoice(e.target.value)} style={{ flex: 1 }} aria-label={`${label} procedure`}>
+              <option value="">— none —</option>
+              {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+            <button className="btn small" disabled={saving} onClick={() => void applyChange()}>Apply</button>
+            <button className="btn ghost small" onClick={() => setEditing(false)}>Cancel</button>
+          </div>
+          {kind !== "runway" && (
+            <div className="teach-box">
+              <div className="field" style={{ marginBottom: 8 }}>
+                <label>Or enter the exact name from your simulator's EFB</label>
+                <input value={manualName} onChange={(e) => setManualName(e.target.value)} placeholder={kind === "SID" ? "e.g. MERIT3" : kind === "STAR" ? "e.g. BAGSO1L" : "e.g. ILS28L"} style={{ textTransform: "uppercase" }} />
+              </div>
+              <div className="row">
+                {kind === "APPROACH" ? (
+                  <div className="field" style={{ marginBottom: 0, flex: 1 }}>
+                    <label>Type</label>
+                    <select value={manualApproachKind} onChange={(e) => setManualApproachKind(e.target.value)}>
+                      {["ILS", "RNAV", "VOR", "NDB", "VISUAL", "OTHER"].map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="field" style={{ marginBottom: 0, flex: 1 }}>
+                    <label>Transition (optional)</label>
+                    <input value={manualTransition} onChange={(e) => setManualTransition(e.target.value)} placeholder="e.g. BAGSO" style={{ textTransform: "uppercase" }} />
+                  </div>
+                )}
+              </div>
+              <div className="faint" style={{ marginTop: 8, fontSize: 12 }}>
+                In the sim: EFB → <b>ADD ARRIVAL</b> / <b>ADD APPROACH</b> lists the real procedures.
+                Saved for {airportIcao}{runway ? ` runway ${runway}` : ""} and reused automatically.
+              </div>
+            </div>
+          )}
+          {teachError && <div className="errbox mt">{teachError}</div>}
         </div>
       )}
     </div>

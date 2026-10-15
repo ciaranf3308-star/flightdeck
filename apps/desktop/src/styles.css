@@ -662,6 +662,14 @@ table.data tr:hover td { background: var(--paper); }
   cursor: pointer; padding: 6px 0 0; font-family: var(--sans);
 }
 .change-link:hover { text-decoration: underline; }
+.teach-hint {
+  background: var(--amber-soft); border: 1px solid #ead9ae; border-radius: var(--r-sm);
+  padding: 10px 13px; font-size: 12.5px; color: #6b4a08; line-height: 1.55; margin: 10px 0 2px;
+}
+.teach-box {
+  background: var(--paper); border: 1px dashed var(--line-strong); border-radius: var(--r-md);
+  padding: 14px 16px; margin-top: 12px;
+}
 .conf {
   display: inline-flex; align-items: center;
   font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
