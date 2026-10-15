@@ -20,7 +20,7 @@
     "typecheck": "tsc -b"
   },
   "type": "module",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "workspaces": [
     "apps/*",
     "services/planning-api",
